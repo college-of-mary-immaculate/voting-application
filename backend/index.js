@@ -7,6 +7,7 @@ const app = express();
 app.use(express.json());
 
 app.post("/voters/register", VoterController.register);
+app.post("/voters/login", VoterController.login);
 
 app.listen(process.env.PORT, () => {
   console.log(`🚀 Server running on port ${process.env.PORT}`);

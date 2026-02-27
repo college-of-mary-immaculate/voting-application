@@ -57,8 +57,8 @@ CREATE TABLE candidates (
 -- =========================================
 CREATE TABLE voters (
     voter_id INT AUTO_INCREMENT PRIMARY KEY,
-    student_id VARCHAR(50) NOT NULL UNIQUE,
     full_name VARCHAR(150) NOT NULL,
+    email VARCHAR(150) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     has_voted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP

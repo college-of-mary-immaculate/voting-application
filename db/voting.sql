@@ -8,14 +8,32 @@ USE voting_db;
 -- =========================================
 -- 1. Elections Table
 -- =========================================
-CREATE TABLE elections (
-    election_id INT AUTO_INCREMENT PRIMARY KEY,
-    election_name VARCHAR(100) NOT NULL,
-    election_date DATE NOT NULL,
-    status ENUM('Upcoming','Ongoing','Closed') NOT NULL DEFAULT 'Upcoming',
+CREATE TABLE election_types (
+    type_id INT AUTO_INCREMENT PRIMARY KEY,
+    type_name VARCHAR(50) NOT NULL UNIQUE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
+INSERT INTO election_types (type_name) VALUES ('National'), ('Barangay'), ('School');
+
+CREATE TABLE elections (
+    election_id INT AUTO_INCREMENT PRIMARY KEY,
+    election_type_id INT NOT NULL,
+    election_name VARCHAR(100) NOT NULL,
+
+    start_at DATETIME NOT NULL,
+    end_at DATETIME NOT NULL,
+
+    status ENUM('Upcoming','Ongoing','Closed') NOT NULL DEFAULT 'Upcoming',
+
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_elections_type
+        FOREIGN KEY (election_type_id)
+        REFERENCES election_types(type_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+) ENGINE=InnoDB;
 -- =========================================
 -- 2. Positions Table
 -- =========================================

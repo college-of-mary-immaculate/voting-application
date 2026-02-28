@@ -39,7 +39,10 @@ class VoterService {
             if (!match) {
                 throw new Error('Invalid email or password.');
             }
-            return {message: "Login successful"};
+            return {
+                status: 'success',
+                message: "Login successful"
+            };
         }
 }
 

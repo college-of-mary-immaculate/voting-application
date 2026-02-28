@@ -1,16 +1,5 @@
 export default function Candidates() {
-  return (
-    <div style={{
-      padding: "80px",
-      background: "dodgerblue",
-      color: "white",
-      fontSize: "40px",
-      fontWeight: "bold",
-      textAlign: "center",
-      minHeight: "600px"
-    }}>
-      CANDIDATES PAGE IS HERE!<br />
-      This should appear when you click "Candidates"
-    </div>
-  );
+  return <div style={{ background: 'cyan', minHeight: '100vh', padding: '200px 0', textAlign: 'center', fontSize: '60px', color: 'black', fontWeight: 'bold' }}>
+    CANDIDATES — I AM VISIBLE NOW
+  </div>;
 }

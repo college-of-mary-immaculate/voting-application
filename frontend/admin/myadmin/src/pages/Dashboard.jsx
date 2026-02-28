@@ -1,16 +1,5 @@
 export default function Dashboard() {
-  return (
-    <div style={{
-      padding: "80px",
-      background: "orange",
-      color: "white",
-      fontSize: "40px",
-      fontWeight: "bold",
-      textAlign: "center",
-      minHeight: "600px"
-    }}>
-      DASHBOARD PAGE IS HERE!<br />
-      If you see this → import + render is WORKING
-    </div>
-  );
+  return <div style={{ background: 'orange', minHeight: '100vh', padding: '200px 0', textAlign: 'center', fontSize: '60px', color: 'black', fontWeight: 'bold' }}>
+    DASHBOARD — I AM VISIBLE NOW
+  </div>;
 }

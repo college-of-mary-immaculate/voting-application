@@ -1,16 +1,5 @@
 export default function Users() {
-  return (
-    <div style={{
-      padding: "80px",
-      background: "limegreen",
-      color: "black",
-      fontSize: "40px",
-      fontWeight: "bold",
-      textAlign: "center",
-      minHeight: "600px"
-    }}>
-      USERS PAGE IS HERE!<br />
-      This should appear when you click "Users"
-    </div>
-  );
+  return <div style={{ background: 'lime', minHeight: '100vh', padding: '200px 0', textAlign: 'center', fontSize: '60px', color: 'black', fontWeight: 'bold' }}>
+    USERS — I AM VISIBLE NOW
+  </div>;
 }

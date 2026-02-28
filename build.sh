@@ -54,17 +54,28 @@ FLUSH PRIVILEGES;
 \""
 
 # ---------------------------
-# Create Node app users
+# Create Node app users on MASTER
 # ---------------------------
-echo "⏳ Creating app users for Node..."
+echo "⏳ Creating app users on MASTER..."
 docker exec mysql_master sh -c "mysql -u root -p111 -e \"
 CREATE USER IF NOT EXISTS 'mydb_user'@'%' IDENTIFIED BY 'voting_master';
 GRANT SELECT, INSERT, UPDATE, DELETE ON voting_db.* TO 'mydb_user'@'%';
+
+CREATE USER IF NOT EXISTS 'voting_slave'@'%' IDENTIFIED BY 'voting_slave';
+GRANT SELECT ON voting_db.* TO 'voting_slave'@'%';
+
+FLUSH PRIVILEGES;
+\""
+
+# ---------------------------
+# Create Node app users on SLAVE
+# ---------------------------
+echo "⏳ Creating app users on SLAVE..."
+docker exec mysql_slave sh -c "mysql -u root -p111 -e \"
 CREATE USER IF NOT EXISTS 'voting_slave'@'%' IDENTIFIED BY 'voting_slave';
 GRANT SELECT ON voting_db.* TO 'voting_slave'@'%';
 FLUSH PRIVILEGES;
 \""
-
 # ---------------------------
 # Get master status for replication
 # ---------------------------

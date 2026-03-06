@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import AdminLayout from "./components/AdminLayout";
 import Dashboard from "./pages/Dashboard";
 import Users from "./pages/Users";
+import Elections from "./pages/Election";
 import Candidates from "./pages/Candidates";
 
 function App() {
@@ -12,6 +13,7 @@ function App() {
         <Route path="/admin/*" element={<AdminLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="users" element={<Users />} />
+          <Route path="elections" element={<Elections />} />
           <Route path="candidates" element={<Candidates />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Route>

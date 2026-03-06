@@ -1,3 +1,4 @@
+// src/components/AdminLayout.jsx
 import React from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import "./AdminLayout.css";
@@ -14,27 +15,28 @@ function AdminLayout() {
           <NavLink
             to="/admin"
             end
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
+            className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
           >
             <span className="icon">🏠</span> Dashboard
           </NavLink>
 
           <NavLink
             to="/admin/users"
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
+            className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
           >
             <span className="icon">👥</span> Users
           </NavLink>
 
           <NavLink
+            to="/admin/elections"
+            className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+          >
+            <span className="icon">🗳️</span> Elections
+          </NavLink>
+
+          <NavLink
             to="/admin/candidates"
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
+            className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
           >
             <span className="icon">🏆</span> Candidates
           </NavLink>

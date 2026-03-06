@@ -1,10 +1,10 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import AdminLayout from "./components/AdminLayout";
-import Dashboard from "./pages/Dashboard";
-import Users from "./pages/Users";
-import Elections from "./pages/Election";
-import Candidates from "./pages/Candidates";
+import Dashboard from "./pages/Dashboard/Dashboard";
+import Users from "./pages/Users/Users";
+import Elections from "./pages/Elections/Election";
+import Candidates from "./pages/Candidates/Candidates";
 
 function App() {
   return (

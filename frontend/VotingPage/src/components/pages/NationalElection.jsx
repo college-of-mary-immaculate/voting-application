@@ -7,6 +7,7 @@ export default function NationalElection() {
   const navigate = useNavigate();
   const [positions, setPositions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const endTime = new Date(Date.now() + 60 * 1000); // 1 minute
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -44,6 +45,7 @@ export default function NationalElection() {
       electionTagline="Choose the next leaders of the country"
       positions={positions}
       onSubmitVotes={handleSubmit}
+      endTime={endTime}
     />
   );
 }

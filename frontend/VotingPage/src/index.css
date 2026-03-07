@@ -31,3 +31,42 @@ body {
 .animate-float {
   animation: float 8s ease-in-out infinite;
 }
+@keyframes flip {
+  0% { transform: perspective(400px) rotateX(0deg); }
+  50% { transform: perspective(400px) rotateX(20deg); }
+  100% { transform: perspective(400px) rotateX(0deg); }
+}
+
+.animate-flip {
+  animation: flip 0.6s ease-in-out;
+}
+@keyframes flip-sheet {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  20% {
+    transform: translateY(-20%);
+    opacity: 0.8;
+  }
+  40% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  60% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  80% {
+    transform: translateY(20%);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+.animate-flip-sheet {
+  animation: flip-sheet 0.8s ease-in-out forwards;
+}

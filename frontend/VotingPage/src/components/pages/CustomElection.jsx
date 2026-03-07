@@ -7,6 +7,7 @@ export default function CustomElection() {
   const navigate = useNavigate();
   const [positions, setPositions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const endTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -43,6 +44,7 @@ export default function CustomElection() {
       electionTagline="Vote for your preferred candidates"
       positions={positions}
       onSubmitVotes={handleSubmit}
+      endTime={endTime}
     />
   );
 }

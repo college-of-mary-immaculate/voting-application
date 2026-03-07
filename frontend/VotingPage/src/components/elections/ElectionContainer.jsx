@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PositionSection from './PositionSection';
 import ConfirmationModal from './ConfirmationModal';
 import SuccessToast from './SuccessToast';
+import CountdownTimer from './CountdownTimer';
 
 export default function ElectionContainer({
   electionName,
   electionTagline,
   positions,
   onSubmitVotes,
+  endTime,
 }) {
   const [votes, setVotes] = useState({});
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -15,8 +17,21 @@ export default function ElectionContainer({
   const [voteCount, setVoteCount] = useState(0);
   const [hasVoted, setHasVoted] = useState(false);
   const [validationMessage, setValidationMessage] = useState('');
+  const [isExpired, setIsExpired] = useState(false);
+
+  // Check if election has ended
+  useEffect(() => {
+    if (!endTime) return;
+    const checkExpiry = () => {
+      setIsExpired(new Date() >= new Date(endTime));
+    };
+    checkExpiry();
+    const interval = setInterval(checkExpiry, 1000);
+    return () => clearInterval(interval);
+  }, [endTime]);
 
   const handleSelect = (positionId, isMulti) => (value) => {
+    if (isExpired) return; // Disable if expired
     setVotes(prev => {
       if (typeof value === 'function') {
         return { ...prev, [positionId]: value(prev[positionId]) };
@@ -27,10 +42,12 @@ export default function ElectionContainer({
   };
 
   const handleSubmitClick = () => {
+    if (isExpired) return;
     setShowConfirmModal(true);
   };
 
   const handleConfirmVote = async () => {
+    if (isExpired) return;
     const total = Object.values(votes).reduce((acc, val) => {
       if (Array.isArray(val)) return acc + val.length;
       return acc + (val ? 1 : 0);
@@ -54,11 +71,7 @@ export default function ElectionContainer({
   };
 
   const handleCancel = () => setShowConfirmModal(false);
-  
-  // Function to go back and edit
-  const handleEdit = () => {
-    setShowConfirmModal(false);
-  };
+  const handleEdit = () => setShowConfirmModal(false);
 
   const selectedPositions = positions.map(pos => {
     const selected = votes[pos.id];
@@ -82,9 +95,12 @@ export default function ElectionContainer({
     }
   });
 
+  // Disable everything if expired
+  const disabled = hasVoted || isExpired;
+
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {/* Background Image with overlay */}
+      {/* Background (unchanged) */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
@@ -101,36 +117,38 @@ export default function ElectionContainer({
         }}
       />
 
-      {/* Validation Toast */}
       {validationMessage && (
         <div className="fixed top-5 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-xl shadow-2xl z-50 animate-slideDown">
           ⚠️ {validationMessage}
         </div>
       )}
 
-      {/* Content */}
       <div className="relative z-10 min-h-screen bg-gradient-to-br from-[#f8f9fa]/80 via-white/80 to-[#e9ecef]/80 backdrop-blur-sm py-10 px-4">
         <div className="absolute top-0 left-0 w-96 h-96 bg-[#0f4c5c] opacity-20 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#f4a261] opacity-20 rounded-full blur-3xl"></div>
 
         <div className="relative max-w-7xl mx-auto">
+          {/* Header with countdown */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
             <div>
               <h1 className="text-5xl font-light text-white tracking-tight drop-shadow-lg">{electionName}</h1>
               <p className="text-white/90 text-lg mt-2 drop-shadow">{electionTagline}</p>
             </div>
-            <div className="bg-white/70 backdrop-blur-md rounded-3xl p-5 shadow-lg border border-white/50">
-              <div className="flex gap-8">
-                {positions.map(pos => (
-                  <div key={pos.id} className="text-center">
-                    <div className="text-sm uppercase tracking-wider text-[#5a6b7a]">{pos.shortTitle || pos.title}</div>
-                    <div className="text-2xl font-semibold text-[#0f4c5c] mt-1">
-                      {pos.maxVotes > 1
-                        ? `${votes[pos.id]?.length || 0}/${pos.maxVotes}`
-                        : votes[pos.id] ? '✓' : '—'}
+            <div className="flex items-center gap-4">
+              {endTime && <CountdownTimer endTime={endTime} />}
+              <div className="bg-white/70 backdrop-blur-md rounded-3xl p-5 shadow-lg border border-white/50">
+                <div className="flex gap-8">
+                  {positions.map(pos => (
+                    <div key={pos.id} className="text-center">
+                      <div className="text-sm uppercase tracking-wider text-[#5a6b7a]">{pos.shortTitle || pos.title}</div>
+                      <div className="text-2xl font-semibold text-[#0f4c5c] mt-1">
+                        {pos.maxVotes > 1
+                          ? `${votes[pos.id]?.length || 0}/${pos.maxVotes}`
+                          : votes[pos.id] ? '✓' : '—'}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -154,7 +172,7 @@ export default function ElectionContainer({
               selectedIds={votes[pos.id] || (pos.maxVotes > 1 ? [] : null)}
               onSelect={handleSelect(pos.id, pos.maxVotes > 1)}
               maxVotes={pos.maxVotes}
-              disabled={hasVoted}
+              disabled={disabled}
               setValidationMessage={setValidationMessage}
             />
           ))}
@@ -162,18 +180,21 @@ export default function ElectionContainer({
           <div className="flex justify-center mt-10">
             <button
               onClick={handleSubmitClick}
-              disabled={hasVoted}
+              disabled={disabled}
               className={`group text-lg font-medium py-4 px-14 rounded-full transition-all duration-300 transform hover:scale-105 ${
-                hasVoted
+                disabled
                   ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   : 'bg-[#0f4c5c] text-white shadow-xl hover:shadow-2xl hover:bg-[#1a6b7f]'
               }`}
             >
-              {hasVoted ? 'Vote Submitted' : 'Review & Submit'}
+              {disabled ? (isExpired ? 'Election Ended' : 'Vote Submitted') : 'Review & Submit'}
             </button>
           </div>
 
-          {hasVoted && (
+          {isExpired && (
+            <p className="text-center text-red-500 mt-6 font-medium animate-pulse drop-shadow">Voting period has ended.</p>
+          )}
+          {hasVoted && !isExpired && (
             <p className="text-center text-[#2ecc71] mt-6 font-medium animate-pulse drop-shadow">Thank you for participating!</p>
           )}
         </div>

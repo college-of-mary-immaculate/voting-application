@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const asyncHandler = require('./src/utils/asyncHandler');
-
+const authMiddleware = require('./src/middleware/authMiddleware');
 const VoterController = require("./src/controllers/votersController");
 const ElectionsController = require('./src/controllers/electionsController');
 const CandidatesController = require('./src/controllers/candidatesController');

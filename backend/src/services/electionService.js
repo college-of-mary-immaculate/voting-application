@@ -1,4 +1,7 @@
 const DBService = require("./dbService");
+const PositionService = require("./positionService");
+const { formatForMySQL } = require("../utils/dateFormatter");
+const { generatePlaceholders, flattenValues } = require("../utils/dbHelper");
 
 class ElectionService {
   static async create(election_type_id, election_name, start_at, end_at) {
@@ -6,50 +9,65 @@ class ElectionService {
       throw new Error("All fields are required: type, name, start_at, end_at");
     }
 
-    if (new Date(start_at) >= new Date(end_at)) {
-      throw new Error("start_at must be earlier than end_at");
+    const startDate = formatForMySQL(start_at);
+    const endDate = formatForMySQL(end_at);
+
+    if (new Date(startDate) >= new Date(endDate)) {
+      throw new Error("`start_at` must be earlier than `end_at`");
     }
 
     const existing = await DBService.read(
-      `SELECT * FROM elections 
-       WHERE election_type_id = ? 
-       AND election_name = ?`,
-      [election_type_id, election_name],
+      `SELECT * FROM elections WHERE election_type_id = ? AND election_name = ?`,
+      [election_type_id, election_name]
     );
 
     if (existing.length > 0) {
       throw new Error(
-        "An election with this name already exists for the selected type.",
+        "An election with this name already exists for the selected type."
       );
     }
 
     const now = new Date();
     let status = "Upcoming";
+    const startTime = new Date(startDate);
+    const endTime = new Date(endDate);
 
-    const startDate = new Date(start_at);
-    const endDate = new Date(end_at);
-
-    if (now >= startDate && now <= endDate) {
-      status = "Ongoing";
-    } else if (now > endDate) {
-      status = "Closed";
-    }
+    if (now >= startTime && now <= endTime) status = "Ongoing";
+    else if (now > endTime) status = "Closed";
 
     const sql = `
-      INSERT INTO elections 
-      (election_type_id, election_name, start_at, end_at, status) 
+      INSERT INTO elections
+      (election_type_id, election_name, start_at, end_at, status)
       VALUES (?, ?, ?, ?, ?)
     `;
-
     const result = await DBService.write(sql, [
       election_type_id,
       election_name,
-      start_at,
-      end_at,
+      startDate,
+      endDate,
       status,
     ]);
 
     const insertedId = result.insertId || result.lastInsertRowid;
+
+    const templates = await PositionService.selectTemplate(election_type_id);
+
+    if (templates.length > 0) {
+      const values = templates.map((t) => [
+        insertedId,
+        t.position_name,
+        t.max_vote_allowed,
+      ]);
+
+      const placeholders = generatePlaceholders(values);
+      const flattened = flattenValues(values);
+
+      await DBService.write(
+        `INSERT INTO positions (election_id, position_name, max_vote_allowed)
+         VALUES ${placeholders}`,
+        flattened
+      );
+    }
 
     const [created] = await DBService.read(
       `SELECT 
@@ -62,7 +80,7 @@ class ElectionService {
        FROM elections e
        JOIN election_types t ON e.election_type_id = t.type_id
        WHERE e.election_id = ?`,
-      [insertedId],
+      [insertedId]
     );
 
     return {
@@ -75,16 +93,15 @@ class ElectionService {
   static async getAll() {
     const elections = await DBService.read(
       `SELECT 
-       e.election_id,
-       e.election_name,
-       e.start_at,
-       e.end_at,
-       e.status,
-       t.type_name
-     FROM elections e
-     JOIN election_types t ON e.election_type_id = t.type_id
-     ORDER BY e.start_at ASC`,
-      [],
+         e.election_id,
+         e.election_name,
+         e.start_at,
+         e.end_at,
+         e.status,
+         t.type_name
+       FROM elections e
+       JOIN election_types t ON e.election_type_id = t.type_id
+       ORDER BY e.start_at ASC`
     );
 
     if (elections.length === 0) {
@@ -107,20 +124,22 @@ class ElectionService {
         timeLeft = Math.floor((end - now) / 1000);
       }
 
+      const status =
+        now > end ? "Closed" : isActive ? "Ongoing" : e.status;
+
       return {
         ...e,
-        server_time: now.toISOString(),
+        start_at: formatForMySQL(e.start_at),
+        end_at: formatForMySQL(e.end_at),
+        server_time: formatForMySQL(now),
         is_active: isActive,
         seconds_until_start: now < start ? timeLeft : 0,
         seconds_left: isActive ? timeLeft : 0,
-        status: isActive ? "Ongoing" : e.status,
+        status,
       };
     });
 
-    return {
-      status: "success",
-      data: formattedElections,
-    };
+    return { status: "success", data: formattedElections };
   }
 }
 

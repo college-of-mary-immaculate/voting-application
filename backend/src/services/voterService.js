@@ -41,7 +41,12 @@ class VoterService {
             }
             return {
                 status: 'success',
-                message: "Login successful"
+                message: "Login successful",
+                data : {
+                    id: voter.voter_id,
+                    email: voter.email,
+                    fullname: voter.fullname
+                }
             };
         }
 }

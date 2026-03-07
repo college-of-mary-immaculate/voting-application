@@ -14,7 +14,7 @@ CREATE TABLE election_types (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
-INSERT INTO election_types (type_name) VALUES ('National'), ('Barangay'), ('School');
+INSERT INTO election_types (type_name) VALUES ('National'), ('Barangay'), ('School'), ('Custom');
 
 CREATE TABLE elections (
     election_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -110,6 +110,36 @@ CREATE TABLE votes (
         ON DELETE CASCADE
         ON UPDATE CASCADE
 ) ENGINE=InnoDB;
+
+-- FOR CANDIDATE POSITIONS TEAMPLATE
+CREATE TABLE position_templates (
+    template_id INT AUTO_INCREMENT PRIMARY KEY,
+    election_type_id INT NOT NULL,
+    position_name VARCHAR(100) NOT NULL,
+    max_vote_allowed INT DEFAULT 1
+);
+
+INSERT INTO position_templates (election_type_id, position_name, max_vote_allowed)
+VALUES
+-- National
+(1, 'President', 1),
+(1, 'Vice President', 1),
+(1, 'Senator', 12),
+
+-- Barangay
+(2, 'Barangay Captain', 1),
+(2, 'Barangay Kagawad', 7),
+(2, 'SK Chairman', 1),
+(2, 'SK Kagawad', 7),
+
+-- School
+(3, 'President', 1),
+(3, 'Vice President', 1),
+(3, 'Secretary', 1),
+(3, 'Treasurer', 1),
+(3, 'Auditor', 1),
+(3, 'PRO', 1),
+(3, 'Board Member', 3);
 
 -- =========================================
 -- Indexes for Performance (Important for Replication & Scaling)

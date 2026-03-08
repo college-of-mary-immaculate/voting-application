@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { loginVoter } from '../services/api';
+import { loginVoter, setAuthToken } from '../services/api';
 import { useNavigate, Link } from 'react-router-dom';
 
 export default function Login() {
@@ -41,7 +41,8 @@ export default function Login() {
     try {
       const res = await loginVoter(form);
       console.log('Login successful', res.data);
-      navigate('/dashboard');
+      setAuthToken(res.data.token);          // Store JWT token
+      navigate('/elections');                 // Redirect to election selector
     } catch (err) {
       setApiError(err.response?.data?.error || 'Invalid email or password');
     }

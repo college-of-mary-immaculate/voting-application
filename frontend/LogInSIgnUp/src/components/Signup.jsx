@@ -53,7 +53,7 @@ export default function Signup() {
 
     try {
       const res = await registerVoter({
-        fullname: form.fullname,
+        full_name: form.fullname,
         email: form.email,
         password: form.password
       });

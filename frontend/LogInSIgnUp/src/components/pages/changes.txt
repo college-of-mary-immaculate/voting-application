@@ -1,0 +1,7 @@
+Add countdown timer to voting pages
+
+- Create reusable CountdownTimer component
+- Set timer to 1 minute (minutes & seconds only)
+- Add flip animation for digit changes
+- Disable voting when timer expires
+- Display "Election Ended" message after timeout

@@ -6,6 +6,7 @@ export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -41,8 +42,8 @@ export default function Login() {
     try {
       const res = await loginVoter(form);
       console.log('Login successful', res.data);
-      setAuthToken(res.data.token);          // Store JWT token
-      navigate('/elections');                 // Redirect to election selector
+      setAuthToken(res.data.token);
+      navigate('/elections');
     } catch (err) {
       setApiError(err.response?.data?.error || 'Invalid email or password');
     }
@@ -50,7 +51,7 @@ export default function Login() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center p-4 overflow-hidden">
-      {/* Background Image with low opacity and blur */}
+      {/* Background Image */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
@@ -59,7 +60,6 @@ export default function Login() {
           filter: 'blur(4px)',
         }}
       />
-      {/* Optional overlay for extra dimming */}
       <div className="absolute inset-0 bg-black/10" />
 
       {/* Card */}
@@ -89,14 +89,23 @@ export default function Login() {
 
           <div>
             <label className="block text-sm font-medium text-[#1e3a8a]/80 mb-1">Password</label>
-            <input
-              type="password"
-              name="password"
-              value={form.password}
-              onChange={handleChange}
-              className={`w-full px-4 py-3 bg-[#eef5ff] border-0 rounded-xl text-[#1e3a8a] placeholder-[#1e3a8a]/40 focus:outline-none transition shadow-[inset_5px_5px_10px_#b0c4de,inset_-5px_-5px_10px_#ffffff] ${errors.password ? 'shadow-[inset_5px_5px_10px_#fecaca,inset_-5px_-5px_10px_#ffffff]' : ''}`}
-              placeholder="••••••••"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                className={`w-full px-4 py-3 pr-16 bg-[#eef5ff] border-0 rounded-xl text-[#1e3a8a] placeholder-[#1e3a8a]/40 focus:outline-none transition shadow-[inset_5px_5px_10px_#b0c4de,inset_-5px_-5px_10px_#ffffff] ${errors.password ? 'shadow-[inset_5px_5px_10px_#fecaca,inset_-5px_-5px_10px_#ffffff]' : ''}`}
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm font-semibold text-[#1e3a8a]/70 hover:text-[#1e3a8a] focus:outline-none uppercase tracking-wider"
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
             {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password}</p>}
           </div>
 

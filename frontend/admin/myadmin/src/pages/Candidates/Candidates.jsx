@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Candidates.css';
 
 const mockCandidates = [
@@ -20,46 +20,101 @@ const mockCandidates = [
     photo_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop',
     status: 'Active',
   },
-  {
-    candidate_id: 3,
-    full_name: 'Pedro Reyes',
-    party_name: null,
-    position_name: 'Secretary',
-    election_name: 'Class 11-A Officer Election',
-    photo_url: '',
-    status: 'Withdrawn',
-  },
-  {
-    candidate_id: 4,
-    full_name: 'Ana Lim',
-    party_name: 'Bagong Pag-asa',
-    position_name: 'Treasurer',
-    election_name: 'School Elections 2025-2026',
-    photo_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop',
-    status: 'Active',
-  },
 ];
 
 export default function Candidates() {
-  const [candidates] = useState(mockCandidates);
+  const [candidates, setCandidates] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   const [formData, setFormData] = useState({
     full_name: '',
     party_name: '',
-    position_id: '',
     photo_url: '',
     status: 'Active',
   });
+
+  useEffect(() => {
+    const fetchCandidates = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/candidates');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+
+        if (json.status === 'success') {
+          setCandidates(json.data || []);
+        } else {
+          setError('Backend returned error — showing demo data');
+          setCandidates(mockCandidates);
+        }
+      } catch (err) {
+        console.error('Fetch failed:', err);
+        setError('Could not connect to server — showing demo data');
+        setCandidates(mockCandidates);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCandidates();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    alert('Candidate added (demo mode – no real save)');
-    // You can simulate adding to the list if you want
+    setError(null);
+
+    if (!formData.full_name.trim()) {
+      setError('Full name is required');
+      return;
+    }
+
+    const dataToSend = {
+      ...formData,
+      position_id: 1, 
+    };
+
+    try {
+      const res = await fetch('/api/candidates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dataToSend),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok || json.status !== 'success') {
+        throw new Error(json.error || 'Failed to add candidate');
+      }
+
+      alert('Candidate added successfully!');
+
+      const refreshRes = await fetch('/api/candidates');
+      const refreshJson = await refreshRes.json();
+      if (refreshJson.status === 'success') {
+        setCandidates(refreshJson.data || []);
+      }
+
+      setFormData({
+        full_name: '',
+        party_name: '',
+        photo_url: '',
+        status: 'Active',
+      });
+    } catch (err) {
+      setError(err.message);
+      console.error('Add failed:', err);
+    }
   };
+
+  if (loading) {
+    return <div className="loading">Loading candidates...</div>;
+  }
 
   return (
     <div className="candidates-container">
@@ -70,9 +125,18 @@ export default function Candidates() {
         </p>
       </div>
 
-      {/* Add Candidate Form */}
+      {error && (
+        <div className="error-message">
+          {error} {candidates.length > 0 && '(showing demo data)'}
+        </div>
+      )}
+
       <div className="form-card">
         <h2 className="form-title">Add New Candidate</h2>
+        <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem' }}>
+          Note: Position is fixed to ID 1 in demo mode (add real positions in DB to unlock selection)
+        </p>
+
         <form onSubmit={handleSubmit} className="candidate-form">
           <div className="form-row">
             <div className="form-group">
@@ -101,18 +165,6 @@ export default function Candidates() {
 
           <div className="form-row">
             <div className="form-group">
-              <label>Position *</label>
-              <select name="position_id" value={formData.position_id} onChange={handleChange} required>
-                <option value="">— Select Position —</option>
-                <option value="1">President</option>
-                <option value="2">Vice President</option>
-                <option value="3">Secretary</option>
-                <option value="4">Treasurer</option>
-                <option value="5">Auditor</option>
-              </select>
-            </div>
-
-            <div className="form-group">
               <label>Photo URL (optional)</label>
               <input
                 type="url"
@@ -132,7 +184,6 @@ export default function Candidates() {
         </form>
       </div>
 
-      {/* Candidates Table */}
       <div className="table-card">
         <h2 className="table-title">
           Candidates List {candidates.length > 0 && `(${candidates.length})`}
@@ -140,7 +191,7 @@ export default function Candidates() {
 
         {candidates.length === 0 ? (
           <div className="empty-state">
-            No candidates added yet.
+            No candidates found in the database.
           </div>
         ) : (
           <div className="table-responsive">
@@ -164,15 +215,16 @@ export default function Candidates() {
                         src={c.photo_url || 'https://via.placeholder.com/60?text=No+Photo'}
                         alt={c.full_name}
                         className="candidate-photo"
+                        onError={e => e.target.src = 'https://via.placeholder.com/60?text=Error'}
                       />
                     </td>
                     <td>{c.full_name}</td>
                     <td>{c.party_name || '—'}</td>
-                    <td>{c.position_name}</td>
-                    <td>{c.election_name}</td>
+                    <td>{c.position_name || 'Unknown'}</td>
+                    <td>{c.election_name || 'Unknown'}</td>
                     <td>
-                      <span className={`status-badge ${c.status.toLowerCase()}`}>
-                        {c.status}
+                      <span className={`status-badge ${c.status?.toLowerCase() || 'active'}`}>
+                        {c.status || 'Active'}
                       </span>
                     </td>
                     <td className="actions-cell">
@@ -188,7 +240,11 @@ export default function Candidates() {
       </div>
 
       <div className="page-footer">
-        <small>Demo mode – UI only (no backend connection)</small>
+        <small>
+          {candidates.length > 0 && candidates[0].candidate_id !== mockCandidates[0].candidate_id
+            ? 'Connected to real backend'
+            : 'Demo mode (mock data)'}
+        </small>
       </div>
     </div>
   );

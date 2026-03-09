@@ -1,33 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import './Candidates.css';
 
-const mockCandidates = [
-  {
-    candidate_id: 1,
-    full_name: 'Juan Dela Cruz',
-    party_name: 'SAMAHAN',
-    position_name: 'President',
-    election_name: 'School Elections 2025-2026',
-    photo_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop',
-    status: 'Active',
-  },
-  {
-    candidate_id: 2,
-    full_name: 'Maria Santos',
-    party_name: 'Lakas ng Kabataan',
-    position_name: 'Vice President',
-    election_name: 'School Elections 2025-2026',
-    photo_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop',
-    status: 'Active',
-  },
-];
-
 export default function Candidates() {
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const [formData, setFormData] = useState({
+    position_id: '',
     full_name: '',
     party_name: '',
     photo_url: '',
@@ -38,20 +18,21 @@ export default function Candidates() {
     const fetchCandidates = async () => {
       try {
         setLoading(true);
+        setError(null);
+
         const res = await fetch('/api/candidates');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
         const json = await res.json();
 
         if (json.status === 'success') {
           setCandidates(json.data || []);
         } else {
-          setError('Backend returned error — showing demo data');
-          setCandidates(mockCandidates);
+          throw new Error(json.error || 'Backend error');
         }
       } catch (err) {
+        setError(err.message || 'Failed to load candidates');
         console.error('Fetch failed:', err);
-        setError('Could not connect to server — showing demo data');
-        setCandidates(mockCandidates);
       } finally {
         setLoading(false);
       }
@@ -69,21 +50,16 @@ export default function Candidates() {
     e.preventDefault();
     setError(null);
 
-    if (!formData.full_name.trim()) {
-      setError('Full name is required');
+    if (!formData.full_name.trim() || !formData.position_id) {
+      setError('Full name and position ID are required');
       return;
     }
-
-    const dataToSend = {
-      ...formData,
-      position_id: 1, 
-    };
 
     try {
       const res = await fetch('/api/candidates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dataToSend),
+        body: JSON.stringify(formData),
       });
 
       const json = await res.json();
@@ -94,13 +70,16 @@ export default function Candidates() {
 
       alert('Candidate added successfully!');
 
+      // Refresh list
       const refreshRes = await fetch('/api/candidates');
       const refreshJson = await refreshRes.json();
       if (refreshJson.status === 'success') {
         setCandidates(refreshJson.data || []);
       }
 
+      // Reset form
       setFormData({
+        position_id: '',
         full_name: '',
         party_name: '',
         photo_url: '',
@@ -118,27 +97,26 @@ export default function Candidates() {
 
   return (
     <div className="candidates-container">
+      {/* Header */}
       <div className="page-header">
         <h1 className="page-title">Manage Candidates</h1>
         <p className="page-subtitle">
-          Add, view and manage candidates across all positions and elections
+          Add, view, and manage candidates across all positions and elections
         </p>
       </div>
 
+      {/* Error message */}
       {error && (
         <div className="error-message">
-          {error} {candidates.length > 0 && '(showing demo data)'}
+          {error}
         </div>
       )}
 
       <div className="form-card">
         <h2 className="form-title">Add New Candidate</h2>
-        <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem' }}>
-          Note: Position is fixed to ID 1 in demo mode (add real positions in DB to unlock selection)
-        </p>
 
         <form onSubmit={handleSubmit} className="candidate-form">
-          <div className="form-row">
+          <div className="form-grid">
             <div className="form-group">
               <label>Full Name *</label>
               <input
@@ -161,9 +139,22 @@ export default function Candidates() {
                 placeholder="e.g. SAMAHAN"
               />
             </div>
-          </div>
 
-          <div className="form-row">
+            <div className="form-group">
+              <label>Position ID *</label>
+              <input
+                type="number"
+                name="position_id"
+                value={formData.position_id}
+                onChange={handleChange}
+                placeholder="Enter valid position ID (e.g. 1)"
+                required
+              />
+              <small className="help-text">
+                Get valid IDs from <strong>Positions</strong> table in database
+              </small>
+            </div>
+
             <div className="form-group">
               <label>Photo URL (optional)</label>
               <input
@@ -173,6 +164,14 @@ export default function Candidates() {
                 onChange={handleChange}
                 placeholder="https://example.com/photo.jpg"
               />
+            </div>
+
+            <div className="form-group full-width">
+              <label>Status</label>
+              <select name="status" value={formData.status} onChange={handleChange}>
+                <option value="Active">Active</option>
+                <option value="Withdrawn">Withdrawn</option>
+              </select>
             </div>
           </div>
 
@@ -184,14 +183,15 @@ export default function Candidates() {
         </form>
       </div>
 
+      {/* Candidates Table */}
       <div className="table-card">
         <h2 className="table-title">
-          Candidates List {candidates.length > 0 && `(${candidates.length})`}
+          Candidates ({candidates.length})
         </h2>
 
         {candidates.length === 0 ? (
           <div className="empty-state">
-            No candidates found in the database.
+            No candidates found. Add one using the form above.
           </div>
         ) : (
           <div className="table-responsive">
@@ -218,7 +218,7 @@ export default function Candidates() {
                         onError={e => e.target.src = 'https://via.placeholder.com/60?text=Error'}
                       />
                     </td>
-                    <td>{c.full_name}</td>
+                    <td className="name-cell">{c.full_name}</td>
                     <td>{c.party_name || '—'}</td>
                     <td>{c.position_name || 'Unknown'}</td>
                     <td>{c.election_name || 'Unknown'}</td>
@@ -241,9 +241,7 @@ export default function Candidates() {
 
       <div className="page-footer">
         <small>
-          {candidates.length > 0 && candidates[0].candidate_id !== mockCandidates[0].candidate_id
-            ? 'Connected to real backend'
-            : 'Demo mode (mock data)'}
+          Connected to real backend • {candidates.length} candidates loaded
         </small>
       </div>
     </div>

@@ -1,168 +1,184 @@
 .election-container {
   max-width: 1400px;
   margin: 0 auto;
+  padding: 1.5rem;
 }
 
-/* Header Section */
+/* Header */
 .election-header {
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 2.5rem;
+  text-align: center;
 }
 
 .election-title {
-  font-size: 1.875rem;
-  font-weight: 700;
+  font-size: 2.25rem;
+  font-weight: 800;
   color: #111827;
   margin-bottom: 0.5rem;
 }
 
 .election-subtitle {
   color: #6b7280;
-  font-size: 1rem;
-}
-
-/* Election Type Selector Card */
-.selector-card {
-  background: white;
-  border-radius: 0.75rem;
-  border: 1px solid #e5e7eb; 
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  padding: 1.5rem 2rem;
-  margin-bottom: 2rem;
-}
-
-.selector-label {
   font-size: 1.125rem;
-  font-weight: 600;
-  color: #111827;
-  margin-bottom: 1rem;
-  display: block;
 }
 
-.selector-select {
-  width: 100%;
-  max-width: 500px;
-  padding: 0.75rem 1rem;
-  font-size: 1rem;
-  border: 1px solid #d1d5db; 
-  border-radius: 0.5rem;
-  background-color: white;
-  color: #111827;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.selector-select:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-}
-
-/* Selected Type Info Box */
-.type-info-box {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  padding: 1.25rem;
-  margin-top: 1.25rem;
-}
-
-.type-info-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1e40af;
-  margin-bottom: 0.5rem;
-}
-
-.type-info-id {
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin-bottom: 0.75rem;
-}
-
-.type-info-desc {
-  color: #374151;
-  line-height: 1.6;
-}
-
-/* Content / Overview Card */
+/* Cards */
 .content-card {
   background: white;
-  border-radius: 0.75rem;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border-radius: 1rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   overflow: hidden;
+  margin-bottom: 2rem;
 }
 
 .content-header {
-  background: #f9fafb;
-  padding: 1rem 1.5rem;
+  background: #f8fafc;
+  padding: 1.25rem 1.5rem;
   border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .content-title {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 1.5rem;
+  font-weight: 700;
   color: #111827;
+  margin: 0;
 }
 
-.content-body {
-  padding: 3rem 2rem;
-  text-align: center;
+/* Form */
+.card-body {
+  padding: 1.5rem;
 }
 
-.empty-message {
-  font-size: 1.25rem;
+.grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
   font-weight: 500;
-  color: #6b7280;
-  margin-bottom: 1rem;
+  color: #374151;
 }
 
-.empty-subtext {
-  color: #9ca3af;
-  margin-bottom: 2rem;
-  max-width: 500px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.create-btn {
-  padding: 0.75rem 1.75rem;
-  background-color: #3b82f6;
-  color: white;
-  font-weight: 500;
+input, select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d1d5db;
   border-radius: 0.5rem;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
+  font-size: 1rem;
+  background-color: #f9fafb;
+  transition: all 0.2s ease;
+  outline: none;
 }
 
-.create-btn:hover:not(:disabled) {
-  background-color: #2563eb;
+input:focus, select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  background-color: white;
+}
+
+input::placeholder {
+  color: #9ca3af;
+}
+
+/* Button */
+.create-btn {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  padding: 0.875rem 2rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.create-btn:hover {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 10px -1px rgba(0, 0, 0, 0.15);
 }
 
 .create-btn:disabled {
-  background-color: #9ca3af;
+  background: #9ca3af;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
-/* Footer note */
+/* Table */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  background: #f3f4f6;
+  padding: 1rem 1.5rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #4b5563;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+td {
+  padding: 1rem 1.5rem;
+  color: #374151;
+  font-size: 0.95rem;
+}
+
+tr:hover {
+  background-color: #f9fafb;
+}
+
+/* Status badges */
+.status-badge {
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .grid-cols-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .content-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .content-title {
+    margin-bottom: 1rem;
+  }
+}
+
+/* Footer */
 .election-footer {
-  margin-top: 3rem;
   text-align: center;
   color: #9ca3af;
   font-size: 0.875rem;
-}
-
-/* Responsive adjustments */
-@media (max-width: 640px) {
-  .selector-card,
-  .content-card {
-    padding: 1.25rem;
-  }
-  
-  .content-body {
-    padding: 2.5rem 1rem;
-  }
+  margin-top: 3rem;
+  padding-bottom: 2rem;
 }

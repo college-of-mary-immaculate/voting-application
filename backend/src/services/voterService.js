@@ -49,6 +49,27 @@ class VoterService {
                 }
             };
         }
+    // inadd ko t
+    static async getAll() {
+    const sql = `
+        SELECT 
+        voter_id,
+        full_name,
+        email,
+        has_voted,
+        created_at
+        FROM voters
+        ORDER BY created_at DESC
+    `;
+
+    const voters = await DBService.read(sql, []);
+
+    return {
+        status: 'success',
+        count: voters.length,
+        data: voters
+    };
+    }        
 }
 
 module.exports = VoterService;

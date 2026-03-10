@@ -17,6 +17,15 @@ class VoterController {
             token: token
         });
     }
+    // inadd ko to
+    static async getAll(req, res) {
+    try {
+        const result = await VoterService.getAll();
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message || 'Failed to fetch voters' });
+    }
+    }
 }
 
 module.exports = VoterController;

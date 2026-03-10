@@ -9,18 +9,20 @@ const CandidatesController = require('./src/controllers/candidatesController');
 const app = express();
 app.use(express.json());
 
-// voters endpoints
+// Voters endpoints
 app.post("/api/voters/register", asyncHandler(VoterController.register));
 app.post("/api/voters/login", asyncHandler(VoterController.login));
+app.get("/api/voters", asyncHandler(VoterController.getAll)); // inadd ko to
 
-// election enpoints
+// Elections endpoints
 app.get('/api/elections', asyncHandler(ElectionsController.getElections));
 app.post('/api/elections', asyncHandler(ElectionsController.createElection));
 
-// candidates endpoints
+// Candidates endpoints
 app.get('/api/candidates', CandidatesController.getAll);
 app.post('/api/candidates', CandidatesController.create);
 
+// Error handler middleware
 app.use((err, req, res, next) => {
   console.error(err);
 

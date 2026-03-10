@@ -55,7 +55,7 @@ export default function Signup() {
 
     try {
       await registerVoter({
-        full_name: form.fullname,
+        fullname: form.fullname,   // ✅ fixed key
         email: form.email,
         password: form.password
       });
@@ -103,7 +103,9 @@ export default function Signup() {
               name="fullname"
               value={form.fullname}
               onChange={handleChange}
-              className={`w-full px-4 py-3 bg-[#eef5ff] border-0 rounded-xl text-[#1e3a8a] placeholder-[#1e3a8a]/40 focus:outline-none transition shadow-[inset_5px_5px_10px_#b0c4de,inset_-5px_-5px_10px_#ffffff] ${errors.fullname ? 'shadow-[inset_5px_5px_10px_#fecaca,inset_-5px_-5px_10px_#ffffff]' : ''}`}
+              className={`w-full px-4 py-3 bg-[#eef5ff] border-0 rounded-xl text-[#1e3a8a] placeholder-[#1e3a8a]/40 focus:outline-none transition shadow-[inset_5px_5px_10px_#b0c4de,inset_-5px_-5px_10px_#ffffff] ${
+                errors.fullname ? 'shadow-[inset_5px_5px_10px_#fecaca,inset_-5px_-5px_10px_#ffffff]' : ''
+              }`}
               placeholder="Jober Reyes"
             />
             {errors.fullname && <p className="mt-1 text-xs text-red-600">{errors.fullname}</p>}
@@ -116,7 +118,9 @@ export default function Signup() {
               name="email"
               value={form.email}
               onChange={handleChange}
-              className={`w-full px-4 py-3 bg-[#eef5ff] border-0 rounded-xl text-[#1e3a8a] placeholder-[#1e3a8a]/40 focus:outline-none transition shadow-[inset_5px_5px_10px_#b0c4de,inset_-5px_-5px_10px_#ffffff] ${errors.email ? 'shadow-[inset_5px_5px_10px_#fecaca,inset_-5px_-5px_10px_#ffffff]' : ''}`}
+              className={`w-full px-4 py-3 bg-[#eef5ff] border-0 rounded-xl text-[#1e3a8a] placeholder-[#1e3a8a]/40 focus:outline-none transition shadow-[inset_5px_5px_10px_#b0c4de,inset_-5px_-5px_10px_#ffffff] ${
+                errors.email ? 'shadow-[inset_5px_5px_10px_#fecaca,inset_-5px_-5px_10px_#ffffff]' : ''
+              }`}
               placeholder="you@example.com"
             />
             {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
@@ -130,7 +134,9 @@ export default function Signup() {
                 name="password"
                 value={form.password}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 pr-16 bg-[#eef5ff] border-0 rounded-xl text-[#1e3a8a] placeholder-[#1e3a8a]/40 focus:outline-none transition shadow-[inset_5px_5px_10px_#b0c4de,inset_-5px_-5px_10px_#ffffff] ${errors.password ? 'shadow-[inset_5px_5px_10px_#fecaca,inset_-5px_-5px_10px_#ffffff]' : ''}`}
+                className={`w-full px-4 py-3 pr-16 bg-[#eef5ff] border-0 rounded-xl text-[#1e3a8a] placeholder-[#1e3a8a]/40 focus:outline-none transition shadow-[inset_5px_5px_10px_#b0c4de,inset_-5px_-5px_10px_#ffffff] ${
+                  errors.password ? 'shadow-[inset_5px_5px_10px_#fecaca,inset_-5px_-5px_10px_#ffffff]' : ''
+                }`}
                 placeholder="••••••••"
               />
               <button
@@ -152,7 +158,9 @@ export default function Signup() {
                 name="confirmPassword"
                 value={form.confirmPassword}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 pr-16 bg-[#eef5ff] border-0 rounded-xl text-[#1e3a8a] placeholder-[#1e3a8a]/40 focus:outline-none transition shadow-[inset_5px_5px_10px_#b0c4de,inset_-5px_-5px_10px_#ffffff] ${errors.confirmPassword ? 'shadow-[inset_5px_5px_10px_#fecaca,inset_-5px_-5px_10px_#ffffff]' : ''}`}
+                className={`w-full px-4 py-3 pr-16 bg-[#eef5ff] border-0 rounded-xl text-[#1e3a8a] placeholder-[#1e3a8a]/40 focus:outline-none transition shadow-[inset_5px_5px_10px_#b0c4de,inset_-5px_-5px_10px_#ffffff] ${
+                  errors.confirmPassword ? 'shadow-[inset_5px_5px_10px_#fecaca,inset_-5px_-5px_10px_#ffffff]' : ''
+                }`}
                 placeholder="••••••••"
               />
               <button

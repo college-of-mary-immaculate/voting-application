@@ -5,6 +5,16 @@ const API = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+// Add JWT interceptor: Automatically add Authorization header if token exists
+API.interceptors.request.use((config) => {
+  const token = getAuthToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
 // ========== AUTH ENDPOINTS ==========
 export const registerVoter = (data) => API.post('/voters/register', data);
 export const loginVoter = (data) => API.post('/voters/login', data);
@@ -82,8 +92,8 @@ export const getCustomCandidates = () => {
   });
 };
 
-// ========== AUTH HELPERS ==========
 export const setAuthToken = (token) => localStorage.setItem('token', token);
 export const getAuthToken = () => localStorage.getItem('token');
 export const removeAuthToken = () => localStorage.removeItem('token');
 export const isAuthenticated = () => !!localStorage.getItem('token');
+

@@ -5,9 +5,13 @@ const authMiddleware = require('./src/middleware/authMiddleware');
 const VoterController = require("./src/controllers/votersController");
 const ElectionsController = require('./src/controllers/electionsController');
 const CandidatesController = require('./src/controllers/candidatesController');
+const DashboardController = require("./src/controllers/dashboardController");
 
 const app = express();
 app.use(express.json());
+
+// Dashboard endpoint 
+app.get("/api/dashboard/stats", asyncHandler(DashboardController.getStats));
 
 // Voters endpoints
 app.post("/api/voters/register", asyncHandler(VoterController.register));

@@ -12,6 +12,7 @@ app.use(express.json());
 // Voters endpoints
 app.post("/api/voters/register", asyncHandler(VoterController.register));
 app.post("/api/voters/login", asyncHandler(VoterController.login));
+app.post("/api/voters/vote", asyncHandler(VoterController.vote));
 app.get("/api/voters", asyncHandler(VoterController.getAll)); // inadd ko to
 
 // Elections endpoints

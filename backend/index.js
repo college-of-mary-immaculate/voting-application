@@ -16,7 +16,7 @@ app.get("/api/dashboard/stats", asyncHandler(DashboardController.getStats));
 // Voters endpoints
 app.post("/api/voters/register", asyncHandler(VoterController.register));
 app.post("/api/voters/login", asyncHandler(VoterController.login));
-app.post("/api/voters/vote", asyncHandler(VoterController.vote));
+app.post("/api/voters/vote", authMiddleware, asyncHandler(VoterController.vote));
 app.get("/api/voters", asyncHandler(VoterController.getAll)); // inadd ko to
 
 // Elections endpoints

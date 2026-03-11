@@ -4,8 +4,13 @@ const tokenGenerator = (payload) => {
   return jwt.sign(
     payload,
     process.env.JWT_SECRET,
-    { expiresIn: "7d" }
+    { expiresIn: "12h" }
   );
 };
+
+function verifyToken(token) {
+  return jwt.verify(token, SECRET);
+}
+
 
 module.exports = tokenGenerator;

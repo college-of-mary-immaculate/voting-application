@@ -23,9 +23,9 @@ class VoterController {
         res.status(200).json(result);
     }
 
-    static async vote() {
-        const { voter_id, election_id, votes } = req.body;
-
+    static async vote(req, res) {
+        const { election_id, votes } = req.body;
+        const voter_id = req.user.id;
         const result = await VoterService.castVote(
             voter_id,
             election_id,

@@ -33,36 +33,22 @@ Base URL: `http://localhost:3000/api`
     "password": "securepassword"
 }
 ```
-### RESPONSE (SUCCESS)
-``` json
 
-{
-
-}
-```
 ## 3. Cast Vote
 ### Request Body
 **Endpoint:** `/voters/vote`  
 **Method:** `POST`  
+**Headers:** `Authorization: Bearer <JWT>`  
 **Description:** Cast vote for voters.
 
 ```json
 {
-  "voter_id": 1,
   "election_id": 1,
   "votes": [
-    {
-      "position_id": 1,
-      "candidate_ids": [3]
-    },
-    {
-      "position_id": 2,
-      "candidate_ids": [5]
-    },
-    {
-      "position_id": 3,
-      "candidate_ids": [8,9,10]
-    }
+    { "position_id": 1, "ballot_number": 2 },
+    { "position_id": 2, "ballot_number": 1 },
+    { "position_id": 1, "ballot_number": 1 },
+    { "position_id": 3, "ballot_number": 2 }
   ]
 }
 ```

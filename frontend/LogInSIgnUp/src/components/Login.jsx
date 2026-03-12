@@ -11,37 +11,27 @@ export default function Login() {
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
-    if (errors[e.target.name]) {
-      setErrors({ ...errors, [e.target.name]: '' });
-    }
+    if (errors[e.target.name]) setErrors({ ...errors, [e.target.name]: '' });
   };
 
   const validate = () => {
     const newErrors = {};
-    if (!form.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(form.email)) {
-      newErrors.email = 'Email is invalid';
-    }
-    if (!form.password) {
-      newErrors.password = 'Password is required';
-    }
+    if (!form.email.trim()) newErrors.email = 'Email is required';
+    else if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = 'Email is invalid';
+    if (!form.password) newErrors.password = 'Password is required';
     return newErrors;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setApiError('');
-
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
-
     try {
       const res = await loginVoter(form);
-      console.log('Login successful', res.data);
       setAuthToken(res.data.token);
       navigate('/elections');
     } catch (err) {
@@ -62,10 +52,10 @@ export default function Login() {
       />
       <div className="absolute inset-0 bg-black/10" />
 
-      {/* Card */}
-      <div className="relative w-full max-w-md bg-[#eef5ff] rounded-3xl p-8 shadow-[20px_20px_60px_#b0c4de,-20px_-20px_60px_#ffffff] z-10">
-        <h2 className="text-4xl font-bold text-center text-[#1e3a8a] mb-2">Welcome Back</h2>
-        <p className="text-center text-[#1e3a8a]/70 mb-8">Sign in to continue</p>
+      {/* Card - Responsive */}
+      <div className="relative w-full max-w-[90%] sm:max-w-md md:max-w-lg bg-[#eef5ff] rounded-3xl p-6 sm:p-8 shadow-[20px_20px_60px_#b0c4de,-20px_-20px_60px_#ffffff] z-10">
+        <h2 className="text-3xl sm:text-4xl font-bold text-center text-[#1e3a8a] mb-2">Welcome Back</h2>
+        <p className="text-center text-[#1e3a8a]/70 text-sm sm:text-base mb-6 sm:mb-8">Sign in to continue</p>
 
         {apiError && (
           <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded-xl text-red-600 text-sm shadow-inner">
@@ -73,7 +63,7 @@ export default function Login() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
           <div>
             <label className="block text-sm font-medium text-[#1e3a8a]/80 mb-1">Email</label>
             <input
@@ -115,7 +105,7 @@ export default function Login() {
 
           <button
             type="submit"
-            className="w-full py-3 px-4 bg-[#1e3a8a] text-white font-semibold rounded-xl shadow-[8px_8px_16px_#b0c4de,-8px_-8px_16px_#ffffff] hover:bg-[#2563eb] hover:shadow-[inset_5px_5px_10px_#b0c4de,inset_-5px_-5px_10px_#ffffff] transition duration-200"
+            className="w-full py-3 px-4 bg-[#1e3a8a] text-white font-semibold rounded-xl shadow-[8px_8px_16px_#b0c4de,-8px_-8px_16px_#ffffff] hover:bg-[#2563eb] hover:shadow-[inset_5px_5px_10px_#b0c4de,inset_-5px_-5px_10px_#ffffff] transition duration-200 text-sm sm:text-base"
           >
             Log In
           </button>

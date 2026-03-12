@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Signup from './components/Signup';
 import Login from './components/Login';
 import ElectionLayout from './components/layout/ElectionLayout';
-import ElectionSelector from './components/pages/ElectionSelector';
+import WelcomePage from './components/pages/WelcomePage';
 import NationalElection from './components/pages/NationalElection';
 import BarangayElection from './components/pages/BarangayElection';
 import ClassElection from './components/pages/ClassElection';
@@ -17,7 +17,7 @@ function App() {
         
         {/* Protected routes with sidebar layout */}
         <Route path="/elections" element={<ElectionLayout />}>
-          <Route index element={<ElectionSelector />} />
+          <Route index element={<WelcomePage />} />
           <Route path="national" element={<NationalElection />} />
           <Route path="barangay" element={<BarangayElection />} />
           <Route path="class" element={<ClassElection />} />

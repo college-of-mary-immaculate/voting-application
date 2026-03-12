@@ -159,7 +159,7 @@ export default function ElectionLayout() {
         </div>
       </aside>
 
-      {/* Main Content – offset by sidebar width */}
+      {/* Main Content sidebar width */}
       <main
         className={`
           min-h-screen transition-all duration-300 p-4 md:p-6

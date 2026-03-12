@@ -49,10 +49,7 @@ function AdminLayout() {
 
       <div className="main-area">
         <header className="top-header">
-          <div className="header-left">
-            <h1>Admin Dashboard</h1>
-          </div>
-          <div className="header-right">
+          <div className="header-center">
             <span className="user-info">Admin User</span>
           </div>
         </header>

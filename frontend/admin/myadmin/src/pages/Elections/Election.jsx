@@ -11,13 +11,12 @@ const electionTypes = [
 
 export default function Elections() {
   const [selectedType, setSelectedType] = useState(0);
-  const currentType = electionTypes.find(t => t.id === selectedType);
-
   const [elections, setElections] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [syncing, setSyncing] = useState(false);
 
+  // Form state (used for both create and edit)
   const [formData, setFormData] = useState({
     election_type_id: 3,
     name: '',
@@ -25,27 +24,31 @@ export default function Elections() {
     end_at: '',
   });
 
+  // Edit mode
+  const [editingId, setEditingId] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+
+  // Fetch elections
   const fetchElections = async () => {
     try {
       setLoading(true);
       setError(null);
 
       const res = await fetch('/api/elections');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+
       const json = await res.json();
 
       if (json.status === 'success') {
-        console.log('Fetched elections:', json.data);
         setElections(json.data || []);
       } else {
-        throw new Error(json.message || 'Backend returned error');
+        throw new Error(json.message || json.error || 'Backend error');
       }
     } catch (err) {
       setError(err.message || 'Failed to load elections');
-      console.error(err);
+      console.error('Fetch elections error:', err);
     } finally {
       setLoading(false);
-      setSyncing(false);
     }
   };
 
@@ -53,266 +56,333 @@ export default function Elections() {
     fetchElections();
   }, []);
 
-  const handleTypeChange = (e) => {
-    setSelectedType(Number(e.target.value));
-  };
-
-  const handleFormChange = (e) => {
+  // Handle form input changes
+  const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleCreateElection = async (e) => {
+  // Reset form and close
+  const resetForm = () => {
+    setFormData({
+      election_type_id: 3,
+      name: '',
+      start_at: '',
+      end_at: '',
+    });
+    setEditingId(null);
+    setShowForm(false);
+    setError(null);
+  };
+
+  // Create or Update election
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
 
-    if (!formData.name.trim() || !formData.start_at || !formData.end_at) {
-      setError('All fields are required');
+    if (!formData.name.trim()) {
+      setError('Election name is required');
+      return;
+    }
+    if (!formData.election_type_id) {
+      setError('Please select an election type');
+      return;
+    }
+    if (!formData.start_at || !formData.end_at) {
+      setError('Start and end dates are required');
       return;
     }
 
-    const formattedData = {
-      election_type_id: Number(formData.election_type_id),
-      name: formData.name.trim(),
-      start_at: formData.start_at.replace('T', ' ') + ':00',
-      end_at: formData.end_at.replace('T', ' ') + ':00',
-    };
+    setSubmitting(true);
 
     try {
-      const res = await fetch('/api/elections', {
-        method: 'POST',
+      const method = editingId ? 'PUT' : 'POST';
+      const url = editingId ? `/api/elections/${editingId}` : '/api/elections';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formattedData),
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          election_type_id: Number(formData.election_type_id),
+          start_at: formData.start_at,
+          end_at: formData.end_at,
+        }),
       });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP error ${res.status}`);
+      }
 
       const json = await res.json();
 
-      if (!res.ok || json.status !== 'success') {
-        throw new Error(json.error || json.message || 'Failed to create election');
+      if (json.status !== 'success') {
+        throw new Error(json.message || json.error || 'Operation failed');
       }
 
-      alert('Election created successfully!');
-
-      setSelectedType(Number(formData.election_type_id));
-
-      const optimistic = {
-        election_id: Date.now(),
-        election_name: formData.name.trim(),
-        election_type_id: Number(formData.election_type_id),
-        start_at: formattedData.start_at,
-        end_at: formattedData.end_at,
-        status: 'Upcoming',
-        type_name: electionTypes.find(t => t.id === Number(formData.election_type_id))?.name || 'Unknown',
-      };
-      setElections(prev => [...prev, optimistic]);
-
-      setSyncing(true);
-
-      setTimeout(() => {
-        fetchElections();
-      }, 5000);
-
-      setFormData({
-        election_type_id: 3,
-        name: '',
-        start_at: '',
-        end_at: '',
-      });
+      alert(editingId ? 'Election updated successfully!' : 'Election created successfully!');
+      resetForm();
+      fetchElections();
     } catch (err) {
-      setError(err.message);
-      console.error('Create error:', err);
+      setError(err.message || 'Operation failed. Please try again.');
+      console.error('Submit error:', err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  // Start editing
+  const handleEdit = (election) => {
+    setEditingId(election.election_id);
+    setFormData({
+      election_type_id: election.election_type_id,
+      name: election.election_name || '',
+      start_at: election.start_at ? election.start_at.slice(0, 16) : '',
+      end_at: election.end_at ? election.end_at.slice(0, 16) : '',
+    });
+    setShowForm(true);
+    setError(null);
+  };
+
+  // Delete election
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this election? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/elections/${id}`, { method: 'DELETE' });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP error ${res.status}`);
+      }
+
+      alert('Election deleted successfully!');
+      fetchElections();
+    } catch (err) {
+      alert(`Delete failed: ${err.message}`);
+      console.error('Delete error:', err);
+    }
+  };
+
+  // Filter by type (client-side)
   const filteredElections = selectedType === 0
     ? elections
-    : elections.filter(el => el.type_name?.trim() === currentType?.name?.replace(' Elections', '').trim());
+    : elections.filter((el) => el.election_type_id === selectedType);
 
   return (
-    <div className="election-container space-y-8">
+    <div className="election-container">
       <div className="election-header">
-        <h1 className="election-title">Elections Management</h1>
-        <p className="election-subtitle">
-          Create, view and manage voting events • {new Date().toLocaleDateString()}
-        </p>
+        <h1 className="election-title">Manage Elections</h1>
+        <p className="election-subtitle">Create, edit, and monitor all voting events</p>
       </div>
 
+      {/* Create / Edit Form */}
       <div className="content-card">
         <div className="content-header">
-          <h3 className="content-title">Create New Election</h3>
+          <h2 className="content-title">
+            {editingId ? 'Edit Election' : 'Create New Election'}
+          </h2>
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              resetForm();
+              setShowForm(!showForm);
+            }}
+            disabled={submitting}
+          >
+            {showForm ? 'Cancel' : 'Add Election'}
+          </button>
         </div>
 
-        <div className="card-body">
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleCreateElection}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Election Type
-                </label>
+        {showForm && (
+          <form onSubmit={handleSubmit} className="card-body">
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Election Type *</label>
                 <select
                   name="election_type_id"
                   value={formData.election_type_id}
-                  onChange={handleFormChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  onChange={handleChange}
                   required
+                  disabled={submitting}
                 >
-                  {electionTypes.slice(1).map(t => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
+                  {electionTypes.slice(1).map((type) => (
+                    <option key={type.id} value={type.id}>
+                      {type.name}
+                    </option>
                   ))}
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Election Name *
-                </label>
+              <div className="form-group">
+                <label>Election Name *</label>
                 <input
                   type="text"
                   name="name"
                   value={formData.name}
-                  onChange={handleFormChange}
-                  placeholder="e.g. Student Council Election 2025"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  onChange={handleChange}
+                  placeholder="e.g. 2026 Student Council Election"
                   required
+                  disabled={submitting}
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Start Date *
-                </label>
+              <div className="form-group">
+                <label>Start Date & Time *</label>
                 <input
                   type="datetime-local"
                   name="start_at"
                   value={formData.start_at}
-                  onChange={handleFormChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  onChange={handleChange}
                   required
+                  disabled={submitting}
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  End Date *
-                </label>
+              <div className="form-group">
+                <label>End Date & Time *</label>
                 <input
                   type="datetime-local"
                   name="end_at"
                   value={formData.end_at}
-                  onChange={handleFormChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  onChange={handleChange}
                   required
+                  disabled={submitting}
                 />
               </div>
             </div>
 
-            <div className="mt-8">
-              <button 
-                type="submit" 
-                className="create-btn px-8 py-3"
-                disabled={syncing || loading}
+            {error && <div className="error-message mt-3">{error}</div>}
+
+            <div className="form-actions mt-4">
+              <button
+                type="submit"
+                className="btn btn-success"
+                disabled={submitting}
               >
-                {syncing ? 'Creating...' : 'Create Election'}
+                {submitting
+                  ? 'Saving...'
+                  : editingId
+                  ? 'Update Election'
+                  : 'Create Election'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary ml-2"
+                onClick={resetForm}
+                disabled={submitting}
+              >
+                Cancel
               </button>
             </div>
           </form>
-        </div>
+        )}
       </div>
 
+      {/* Elections List */}
       <div className="content-card">
-        <div className="content-header flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h3 className="content-title">
-            {selectedType === 0 ? 'All' : currentType?.name || 'Unknown'} Elections ({filteredElections.length})
-          </h3>
-
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
-            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-              Filter by type:
-            </label>
+        <div className="content-header flex justify-between items-center">
+          <h2 className="content-title">Elections List</h2>
+          <div className="filter-group">
+            <label className="mr-2">Filter by Type:</label>
             <select
               value={selectedType}
-              onChange={handleTypeChange}
-              className="w-full sm:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              onChange={(e) => setSelectedType(Number(e.target.value))}
+              className="filter-select"
             >
-              {electionTypes.map(type => (
-                <option key={type.id} value={type.id}>
-                  {type.name} (ID: {type.id})
+              {electionTypes.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
                 </option>
               ))}
             </select>
-
-            <button
-              onClick={() => {
-                setSyncing(true);
-                fetchElections();
-              }}
-              disabled={loading || syncing}
-              className="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-sm font-medium disabled:opacity-50 whitespace-nowrap"
-            >
-              {syncing ? 'Syncing...' : 'Refresh List'}
-            </button>
           </div>
         </div>
 
-        <div className="card-body p-0 mt-6">
-          {loading || syncing ? (
-            <div className="text-center py-12 text-gray-600">
-              {syncing ? 'Syncing... waiting for database (may take 5–10 seconds)' : 'Loading elections...'}
-            </div>
-          ) : filteredElections.length === 0 ? (
-            <div className="empty-state py-16 text-center">
-              <div className="text-xl font-semibold mb-2">No elections found</div>
-              <div className="text-gray-600">Create one using the form above</div>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+        {loading ? (
+          <div className="loading text-center py-8">Loading elections...</div>
+        ) : error ? (
+          <div className="error-message text-center py-8">{error}</div>
+        ) : filteredElections.length === 0 ? (
+          <div className="empty-state text-center py-12">
+            No elections found for the selected filter.
+          </div>
+        ) : (
+          <div className="table-responsive">
+            <table className="elections-table w-full">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Start</th>
+                  <th>End</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredElections.map((el) => (
+                  <tr key={el.election_id}>
+                    <td>{el.election_id}</td>
+                    <td className="font-medium">{el.election_name}</td>
+                    <td>{el.type_name || 'Unknown'}</td>
+                    <td>
+                      {el.start_at &&
+                        new Date(el.start_at).toLocaleString('en-PH', {
+                          dateStyle: 'medium',
+                          timeStyle: 'short',
+                        })}
+                    </td>
+                    <td>
+                      {el.end_at &&
+                        new Date(el.end_at).toLocaleString('en-PH', {
+                          dateStyle: 'medium',
+                          timeStyle: 'short',
+                        })}
+                    </td>
+                    <td>
+                      <span
+                        className={`status-badge ${
+                          el.status === 'Ongoing'
+                            ? 'ongoing'
+                            : el.status === 'Upcoming'
+                            ? 'upcoming'
+                            : 'closed'
+                        }`}
+                      >
+                        {el.status}
+                      </span>
+                    </td>
+                    <td className="actions-cell">
+                      <button
+                        className="btn btn-edit mr-2"
+                        onClick={() => handleEdit(el)}
+                        disabled={submitting}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="btn btn-delete"
+                        onClick={() => handleDelete(el.election_id)}
+                        disabled={submitting}
+                      >
+                        Delete
+                      </button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {filteredElections.map(el => (
-                    <tr key={el.election_id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 font-medium text-gray-900">{el.election_name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{el.type_name || 'Unknown'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {new Date(el.start_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {new Date(el.end_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          el.status === 'Ongoing' ? 'bg-green-100 text-green-800' :
-                          el.status === 'Upcoming' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {el.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      <p className="election-footer text-center text-sm text-gray-500 mt-8">
-        Connected to backend • Real data from /api/elections
+      <p className="election-footer text-center mt-8 text-gray-500">
+        Connected to backend • {elections.length} elections loaded
       </p>
     </div>
   );

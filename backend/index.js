@@ -22,6 +22,8 @@ app.get("/api/voters", asyncHandler(VoterController.getAll)); // inadd ko to
 // Elections endpoints
 app.get('/api/elections', asyncHandler(ElectionsController.getElections));
 app.post('/api/elections', asyncHandler(ElectionsController.createElection));
+app.put('/api/elections/:id', asyncHandler(ElectionsController.updateElection)); // inadd ko to
+app.delete('/api/elections/:id', asyncHandler(ElectionsController.deleteElection)); // inadd ko to
 
 // Candidates endpoints
 app.get('/api/candidates', CandidatesController.getAll);

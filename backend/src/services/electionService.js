@@ -141,6 +141,113 @@ class ElectionService {
 
     return { status: "success", data: formattedElections };
   }
+
+  //update
+  static async update(election_id, election_type_id, election_name, start_at, end_at) {
+    if (!election_id) {
+      throw new Error("election_id is required");
+    }
+
+    if (!election_type_id || !election_name || !start_at || !end_at) {
+      throw new Error("All fields are required: election_type_id, election_name, start_at, end_at");
+    }
+
+    const startDate = formatForMySQL(start_at);
+    const endDate = formatForMySQL(end_at);
+
+    if (new Date(startDate) >= new Date(endDate)) {
+      throw new Error("start_at must be earlier than end_at");
+    }
+
+    // check if election exists
+    const exists = await DBService.read(
+      `SELECT election_id FROM elections WHERE election_id = ?`,
+      [election_id]
+    );
+
+    if (exists.length === 0) {
+      throw new Error(`Election with ID ${election_id} not found`);
+    }
+
+    // prevent name conflict
+    const duplicate = await DBService.read(
+      `SELECT election_id FROM elections 
+       WHERE election_type_id = ? AND election_name = ? AND election_id != ?`,
+      [election_type_id, election_name, election_id]
+    );
+
+    if (duplicate.length > 0) {
+      throw new Error("Another election with this name already exists for the selected type.");
+    }
+
+    // compute new status
+    const now = new Date();
+    let status = "Upcoming";
+    if (now >= new Date(startDate) && now <= new Date(endDate)) {
+      status = "Ongoing";
+    } else if (now > new Date(endDate)) {
+      status = "Closed";
+    }
+
+    const sql = `
+      UPDATE elections
+      SET
+        election_type_id = ?,
+        election_name    = ?,
+        start_at         = ?,
+        end_at           = ?,
+        status           = ?
+      WHERE election_id = ?
+    `;
+
+    await DBService.write(sql, [
+      election_type_id,
+      election_name,
+      startDate,
+      endDate,
+      status,
+      election_id
+    ]);
+
+    return {
+      status: "success",
+      message: "Election updated successfully",
+      data: {
+        election_id,
+        election_type_id,
+        election_name,
+        start_at: startDate,
+        end_at: endDate,
+        status
+      }
+    };
+  }
+
+  //delete
+  static async delete(election_id) {
+    if (!election_id) {
+      throw new Error("Election ID is required");
+    }
+
+    const exists = await DBService.read(
+      `SELECT election_id FROM elections WHERE election_id = ?`,
+      [election_id]
+    );
+
+    if (exists.length === 0) {
+      throw new Error("Election not found");
+    }
+
+    await DBService.write(
+      `DELETE FROM elections WHERE election_id = ?`,
+      [election_id]
+    );
+
+    return {
+      status: "success",
+      message: "Election deleted successfully"
+    };
+  }
 }
 
 module.exports = ElectionService;

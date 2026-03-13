@@ -1,25 +1,27 @@
 .candidates-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 1.5rem;
+  padding: 1.5rem 1rem;
+  font-family: system-ui, -apple-system, sans-serif;
 }
 
 /* Header */
 .page-header {
-  margin-bottom: 2.5rem;
   text-align: center;
+  margin-bottom: 3rem;
 }
 
 .page-title {
-  font-size: 2.25rem;
+  font-size: 2.5rem;
   font-weight: 800;
   color: #111827;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .page-subtitle {
   color: #6b7280;
-  font-size: 1.125rem;
+  font-size: 1.2rem;
+  font-weight: 400;
 }
 
 /* Cards */
@@ -27,43 +29,43 @@
 .table-card {
   background: white;
   border-radius: 1rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   overflow: hidden;
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem;
 }
 
-.form-title,
-.table-title {
+.form-card .form-title,
+.table-card .table-title {
+  background: #f8fafc;
+  padding: 1.25rem 1.75rem;
+  border-bottom: 1px solid #e5e7eb;
   font-size: 1.5rem;
   font-weight: 700;
   color: #111827;
-  padding: 1.25rem 1.5rem;
   margin: 0;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f8fafc;
 }
 
 /* Form */
-.card-body {
+.form-card form {
   padding: 1.75rem;
 }
 
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.5rem;
+  gap: 1.75rem;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
 }
 
 .form-group label {
-  font-size: 0.875rem;
+  font-size: 0.95rem;
   font-weight: 500;
   color: #374151;
+  margin-bottom: 0.5rem;
 }
 
 .form-group input,
@@ -72,31 +74,42 @@
   border: 1px solid #d1d5db;
   border-radius: 0.5rem;
   font-size: 1rem;
-  background: #f9fafb;
-  transition: all 0.2s;
+  background: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-  background: white;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
 }
 
 .help-text {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: #6b7280;
+  margin-top: 0.35rem;
 }
 
-/* Button */
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  justify-content: flex-end;
+}
+
+/* Buttons (shared styles) */
 .btn {
-  padding: 0.75rem 1.5rem;
+  padding: 0.65rem 1.25rem;
   border-radius: 0.5rem;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
-  border: none;
   transition: all 0.2s;
+  border: none;
 }
 
 .btn-primary {
@@ -108,23 +121,44 @@
   background: #2563eb;
 }
 
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: #6b7280;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #4b5563;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .btn-edit {
-  background: #fef3c7;
-  color: #92400e;
+  background: #3b82f6;
+  color: white;
+  font-size: 0.9rem;
   margin-right: 0.5rem;
 }
 
 .btn-edit:hover {
-  background: #fde68a;
+  background: #2563eb;
 }
 
 .btn-delete {
-  background: #fee2e2;
-  color: #991b1b;
+  background: #ef4444;
+  color: white;
+  font-size: 0.9rem;
 }
 
 .btn-delete:hover {
-  background: #fecaca;
+  background: #dc2626;
 }
 
 /* Table */
@@ -134,37 +168,57 @@
 
 .candidates-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.95rem;
 }
 
 .candidates-table th,
 .candidates-table td {
   padding: 1rem 1.25rem;
   text-align: left;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .candidates-table th {
-  background: #f9fafb;
+  background: #f8fafc;
   font-weight: 600;
-  color: #4b5563;
+  color: #374151;
   text-transform: uppercase;
   font-size: 0.8rem;
+  letter-spacing: 0.05em;
 }
 
+.candidates-table tr:hover {
+  background: #f9fafb;
+}
+
+.candidates-table td {
+  vertical-align: middle;
+}
+
+/* Candidate photo */
 .candidate-photo {
-  width: 50px;
-  height: 50px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   object-fit: cover;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  border: 2px solid #e5e7eb;
 }
 
+.name-cell {
+  font-weight: 500;
+  color: #111827;
+}
+
+/* Status badges */
 .status-badge {
   padding: 0.35rem 0.85rem;
   border-radius: 9999px;
   font-size: 0.8rem;
   font-weight: 600;
+  text-align: center;
+  display: inline-block;
 }
 
 .status-badge.active {
@@ -177,26 +231,84 @@
   color: #991b1b;
 }
 
-/* Empty & Loading */
-.empty-state,
-.loading {
-  padding: 6rem 2rem;
+/* Loading & Empty states */
+.loading,
+.empty-state {
   text-align: center;
+  padding: 5rem 1rem;
   color: #6b7280;
-  font-size: 1.125rem;
+  font-size: 1.1rem;
 }
 
-/* Footer */
+.error-message {
+  color: #dc2626;
+  background: #fee2e2;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  margin: 2rem auto;
+  max-width: 600px;
+  text-align: center;
+}
+
 .page-footer {
   text-align: center;
   color: #9ca3af;
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   margin-top: 3rem;
+  padding-bottom: 2rem;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .form-grid {
     grid-template-columns: 1fr;
   }
+}
+
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 2rem;
+  }
+
+  .form-card .form-title,
+  .table-card .table-title {
+    padding: 1rem 1.25rem;
+  }
+
+  .candidates-table th,
+  .candidates-table td {
+    padding: 0.9rem 0.75rem;
+  }
+
+  .btn {
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+.form-card-header {
+  background: #f8fafc;
+  padding: 1.25rem 1.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.form-card .form-title {
+  background: none;
+  padding: 0;
+  border-bottom: none;
+  margin: 0;
+}
+
+.form-card-header .btn-primary {
+  background: #3b82f6;
+  color: white;
+  border: none;
+}
+
+.form-card-header .btn-primary:hover {
+  background: #2563eb;
 }

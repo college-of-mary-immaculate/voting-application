@@ -28,6 +28,8 @@ app.delete('/api/elections/:id', asyncHandler(ElectionsController.deleteElection
 // Candidates endpoints
 app.get('/api/candidates', CandidatesController.getAll);
 app.post('/api/candidates', CandidatesController.create);
+app.put('/api/candidates/:id', CandidatesController.update); // inadd ko to
+app.delete('/api/candidates/:id', CandidatesController.delete); // inadd ko to
 
 // Error handler middleware
 app.use((err, req, res, next) => {

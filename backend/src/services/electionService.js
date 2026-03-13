@@ -91,9 +91,11 @@ class ElectionService {
   }
 
   static async getAll() {
+    // ito nadagdag – added election_type_id to the SELECT list
     const elections = await DBService.read(
       `SELECT 
          e.election_id,
+         e.election_type_id,
          e.election_name,
          e.start_at,
          e.end_at,

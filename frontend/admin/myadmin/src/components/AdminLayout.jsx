@@ -40,6 +40,13 @@ function AdminLayout() {
           >
             <span className="icon">🏆</span> Candidates
           </NavLink>
+
+          <NavLink
+            to="/admin/admins"
+            className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+          >
+            <span className="icon">👤</span> Admins
+          </NavLink>
         </nav>
 
         <div className="sidebar-footer">

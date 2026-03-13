@@ -85,6 +85,15 @@ CREATE TABLE votes (
     CONSTRAINT fk_votes_election FOREIGN KEY (election_id) REFERENCES elections(election_id)
 ) ENGINE=InnoDB;
 
+-- 8. Admins
+CREATE TABLE admins (
+    admin_id INT AUTO_INCREMENT PRIMARY KEY,
+    full_name VARCHAR(150) NOT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
 -- =========================================
 -- SEED DATA
 -- =========================================
@@ -116,6 +125,10 @@ INSERT INTO candidates (position_id, ballot_number, full_name, party_name) VALUE
 INSERT INTO voters (full_name, email, password_hash) VALUES
 ('Alice Johnson', 'alice@example.com', 'hashed_pass_123'),
 ('Bob Martinez', 'bob@example.com', 'hashed_pass_456');
+
+-- Absolute Admin
+INSERT INTO admins (full_name, email, password_hash)
+VALUES ('adminone', 'adminone@gmail.com', 'adminone');
 
 -- Performance Indexes
 CREATE INDEX idx_votes_voter_election ON votes(voter_id, election_id);

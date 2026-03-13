@@ -6,9 +6,17 @@ const VoterController = require("./src/controllers/votersController");
 const ElectionsController = require('./src/controllers/electionsController');
 const CandidatesController = require('./src/controllers/candidatesController');
 const DashboardController = require("./src/controllers/dashboardController");
+const AdminController = require('./src/controllers/adminController');
 
 const app = express();
 app.use(express.json());
+
+// Admin endpoints
+app.get('/api/admins', asyncHandler(AdminController.getAllAdmins));
+app.get('/api/admins/:id', asyncHandler(AdminController.getAdminById));
+app.post('/api/admins', asyncHandler(AdminController.createAdmin));
+app.put('/api/admins/:id', asyncHandler(AdminController.updateAdmin));
+app.delete('/api/admins/:id', asyncHandler(AdminController.deleteAdmin));
 
 // Dashboard endpoint 
 app.get("/api/dashboard/stats", asyncHandler(DashboardController.getStats));

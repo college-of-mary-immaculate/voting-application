@@ -1,5 +1,6 @@
 require("dotenv").config();
 const express = require("express");
+const cors = require('cors'); // <-- oo eto dinagdag ko
 const asyncHandler = require('./src/utils/asyncHandler');
 const authMiddleware = require('./src/middleware/authMiddleware');
 const VoterController = require("./src/controllers/votersController");
@@ -9,6 +10,7 @@ const DashboardController = require("./src/controllers/dashboardController");
 const AdminController = require('./src/controllers/adminController');
 
 const app = express();
+app.use(cors()); // <-- tsaka to 
 app.use(express.json());
 
 // Admin endpoints

@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCustomCandidates, isAuthenticated } from '../../services/api';
+import { getElections, getCandidates, isAuthenticated, castVote } from '../../services/api';
 import ElectionContainer from '../elections/ElectionContainer';
+import { processElectionData } from '../../utils/electionHelpers';
 
 export default function CustomElection() {
   const navigate = useNavigate();
   const [positions, setPositions] = useState([]);
+  const [electionId, setElectionId] = useState(null);
   const [loading, setLoading] = useState(true);
-  const endTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -16,24 +18,84 @@ export default function CustomElection() {
   }, [navigate]);
 
   useEffect(() => {
-    getCustomCandidates().then(data => {
-      setPositions([
-        { id: 'chair', title: 'Chairperson', shortTitle: 'Chair', maxVotes: 1, candidates: data.chairperson },
-        { id: 'members', title: 'Committee Members', shortTitle: 'Members', maxVotes: 2, candidates: data.members },
-      ]);
-      setLoading(false);
-    });
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError('');
+
+        const electionsRes = await getElections();
+        const elections = electionsRes.data.data || [];
+        const customElection = elections.find(e => e.election_type_id === 4 && e.status !== 'Closed');
+        if (!customElection) {
+          setError('No active custom election found.');
+          setLoading(false);
+          return;
+        }
+
+        const candidatesRes = await getCandidates();
+        const allCandidates = candidatesRes.data.data || [];
+        const electionCandidates = allCandidates.filter(c => c.election_id === customElection.election_id);
+
+        const { electionId, positions } = processElectionData(customElection, electionCandidates);
+        setElectionId(electionId);
+        setPositions(positions);
+      } catch (err) {
+        console.error('Failed to load election data:', err);
+        setError('Failed to load election data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   const handleSubmit = async (voteData) => {
-    console.log('Submitting custom votes:', voteData);
-    return Promise.resolve();
+    try {
+      const votes = [];
+      voteData.forEach(pos => {
+        if (Array.isArray(pos.selected)) {
+          pos.selected.forEach(candidateId => {
+            const candidate = positions
+              .find(p => p.id === pos.positionId)
+              ?.candidates.find(c => c.id === candidateId);
+            if (candidate) {
+              votes.push({ position_id: pos.positionId, ballot_number: candidate.ballot_number });
+            }
+          });
+        } else if (pos.selected) {
+          const candidate = positions
+            .find(p => p.id === pos.positionId)
+            ?.candidates.find(c => c.id === pos.selected);
+          if (candidate) {
+            votes.push({ position_id: pos.positionId, ballot_number: candidate.ballot_number });
+          }
+        }
+      });
+
+      await castVote({ election_id: electionId, votes });
+      return Promise.resolve();
+    } catch (err) {
+      console.error('Vote submission failed:', err);
+      console.error('Error response:', err.response?.data);
+      throw err;
+    }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#f8f9fa] to-[#e9ecef]">
-        <div className="animate-pulse text-2xl text-[#0f4c5c]">Loading Custom Election...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="animate-pulse text-2xl text-indigo-600">Loading Custom Election...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="text-center text-red-600 text-xl p-8 bg-white rounded-2xl shadow-xl">
+          {error}
+        </div>
       </div>
     );
   }
@@ -44,7 +106,7 @@ export default function CustomElection() {
       electionTagline="Vote for your preferred candidates"
       positions={positions}
       onSubmitVotes={handleSubmit}
-      endTime={endTime}
+      endTime={new Date(Date.now() + 2 * 60 * 1000)} // 2 minutes from now
     />
   );
 }

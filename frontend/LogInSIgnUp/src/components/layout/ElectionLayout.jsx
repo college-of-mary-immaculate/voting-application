@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { removeAuthToken } from '../../services/api';
 
@@ -50,6 +50,23 @@ export default function ElectionLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkScreen = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      // On mobile, start collapsed; on desktop, start expanded.
+      if (mobile) {
+        setSidebarOpen(false);
+      } else {
+        setSidebarOpen(true);
+      }
+    };
+    checkScreen();
+    window.addEventListener('resize', checkScreen);
+    return () => window.removeEventListener('resize', checkScreen);
+  }, []);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
@@ -61,22 +78,24 @@ export default function ElectionLayout() {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex">
-      {/* Sidebar - Glassmorphic */}
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+      {/* Fixed Sidebar */}
       <aside
-        className={`bg-white/70 backdrop-blur-md border-r border-white/20 shadow-2xl transition-all duration-300 ${
-          sidebarOpen ? 'w-72' : 'w-24'
-        } flex flex-col relative overflow-hidden`}
+        className={`
+          fixed left-0 top-0 h-full z-30 bg-white/90 backdrop-blur-md border-r border-indigo-100 shadow-2xl
+          transition-all duration-300 flex flex-col overflow-hidden
+          ${sidebarOpen ? 'w-64' : 'w-20'}
+        `}
       >
-        {/* Decorative gradient blob */}
-        <div className="absolute -top-20 -left-20 w-64 h-64 bg-gradient-to-br from-indigo-200 to-purple-200 rounded-full opacity-30 blur-3xl"></div>
-        <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-gradient-to-br from-pink-200 to-orange-200 rounded-full opacity-30 blur-3xl"></div>
+        {/* Decorative blobs */}
+        <div className="absolute -top-20 -left-20 w-64 h-64 bg-gradient-to-br from-indigo-200 to-purple-200 rounded-full opacity-40 blur-3xl"></div>
+        <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-gradient-to-br from-pink-200 to-orange-200 rounded-full opacity-40 blur-3xl"></div>
 
-        {/* Toggle button */}
-        <div className="p-6 flex justify-end relative z-10">
+        {/* Toggle Button */}
+        <div className="p-4 flex justify-end relative z-10">
           <button
             onClick={toggleSidebar}
-            className="p-3 rounded-xl bg-white/80 hover:bg-white shadow-md transition-all duration-200 text-indigo-600 hover:text-indigo-800"
+            className="p-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-300"
             aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
           >
             {sidebarOpen ? (
@@ -92,7 +111,7 @@ export default function ElectionLayout() {
         </div>
 
         {/* Navigation Links */}
-        <nav className="flex-1 px-4 space-y-2 relative z-10">
+        <nav className="flex-1 px-3 space-y-2 relative z-10">
           {elections.map((election) => {
             const active = isActive(election.path);
             return (
@@ -100,22 +119,22 @@ export default function ElectionLayout() {
                 key={election.id}
                 onClick={() => navigate(election.path)}
                 className={`
-                  w-full flex items-center px-4 py-3 rounded-2xl transition-all duration-200 group
-                  ${sidebarOpen ? 'justify-start space-x-4' : 'justify-center'}
+                  w-full flex items-center px-3 py-3 rounded-xl transition-all duration-200 group
+                  ${sidebarOpen ? 'justify-start space-x-3' : 'justify-center'}
                   ${active 
-                    ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-200' 
-                    : 'text-slate-600 hover:bg-white/70 hover:shadow-md'
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' 
+                    : 'text-indigo-800 hover:bg-indigo-100'
                   }
                 `}
               >
-                <span className={active ? 'text-white' : 'text-indigo-500 group-hover:text-indigo-600'}>
+                <span className={active ? 'text-white' : 'text-indigo-600'}>
                   {election.icon}
                 </span>
                 {sidebarOpen && (
                   <span className="text-sm font-medium">{election.name}</span>
                 )}
                 {active && sidebarOpen && (
-                  <span className="ml-auto w-2 h-2 rounded-full bg-white animate-pulse"></span>
+                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
                 )}
               </button>
             );
@@ -123,13 +142,13 @@ export default function ElectionLayout() {
         </nav>
 
         {/* Logout Button */}
-        <div className="p-4 border-t border-white/30 relative z-10">
+        <div className="p-4 border-t border-indigo-100 relative z-10">
           <button
             onClick={handleLogout}
             className={`
-              w-full flex items-center px-4 py-3 rounded-2xl transition-all duration-200
-              ${sidebarOpen ? 'justify-start space-x-4' : 'justify-center'}
-              bg-red-50 text-red-600 hover:bg-red-100 hover:shadow-md
+              w-full flex items-center px-3 py-3 rounded-xl transition-all duration-200
+              ${sidebarOpen ? 'justify-start space-x-3' : 'justify-center'}
+              bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800
             `}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -140,8 +159,13 @@ export default function ElectionLayout() {
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <main className="flex-1 overflow-auto p-6">
+      {/* Main Content sidebar width */}
+      <main
+        className={`
+          min-h-screen transition-all duration-300 p-4 md:p-6
+          ${sidebarOpen ? 'ml-64' : 'ml-20'}
+        `}
+      >
         <Outlet />
       </main>
     </div>

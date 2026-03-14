@@ -70,11 +70,13 @@ class CandidatesService {
         c.photo_url, 
         c.status,
         p.position_name,
+        p.max_vote_allowed,      /* ito nadagdag – needed for vote limits */
+        e.election_id,            /* ito nadagdag – needed for filtering */
         e.election_name
       FROM candidates c
       JOIN positions p ON c.position_id = p.position_id
       JOIN elections e ON p.election_id = e.election_id
-      ORDER BY e.election_name ASC, p.position_name ASC, c.full_name ASC
+      ORDER BY e.election_name ASC, p.position_name ASC, c.ballot_number ASC
     `;
     
     const candidates = await DBService.read(sql, []);

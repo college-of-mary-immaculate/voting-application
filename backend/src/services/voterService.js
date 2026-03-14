@@ -76,6 +76,49 @@ class VoterService {
     };
   }
 
+  static async getById(id) {
+    const voters = await DBService.read(
+        `SELECT voter_id, full_name, email, has_voted, created_at
+         FROM voters WHERE voter_id = ?`,
+        [id]
+    );
+    return voters[0] || null;
+}
+
+  static async update(id, fullname, email, password) {
+      const existing = await DBService.read(`SELECT voter_id FROM voters WHERE voter_id = ?`, [id]);
+      if (existing.length === 0) throw new Error("Voter not found");
+
+      if (email) {
+          const duplicate = await DBService.read(
+              `SELECT voter_id FROM voters WHERE email = ? AND voter_id != ?`,
+              [email, id]
+          );
+          if (duplicate.length > 0) throw new Error("Email already in use");
+      }
+
+      let sql = `UPDATE voters SET full_name = ?, email = ?`;
+      let params = [fullname || existing[0].full_name, email || existing[0].email];
+
+      if (password) {
+          const hashed = await bcrypt.hash(password, 10);
+          sql += `, password_hash = ?`;
+          params.push(hashed);
+      }
+
+      sql += ` WHERE voter_id = ?`;
+      params.push(id);
+
+      await DBService.write(sql, params);
+      return { status: "success", message: "Voter updated" };
+  }
+
+  static async delete(id) {
+      const result = await DBService.write(`DELETE FROM voters WHERE voter_id = ?`, [id]);
+      if (result.affectedRows === 0) throw new Error("Voter not found");
+      return { status: "success", message: "Voter deleted" };
+  }
+
   static async castVote(voter_id, election_id, votes) {
     if (
       !voter_id ||

@@ -26,6 +26,10 @@ app.post("/api/voters/register", asyncHandler(VoterController.register));
 app.post("/api/voters/login", asyncHandler(VoterController.login));
 app.post("/api/voters/vote", authMiddleware, asyncHandler(VoterController.vote));
 app.get("/api/voters", asyncHandler(VoterController.getAll)); // inadd ko to
+app.get('/api/voters/:id', asyncHandler(VoterController.getById)); // inadd ko to
+app.post('/api/voters', asyncHandler(VoterController.register)); // inadd ko to
+app.put('/api/voters/:id', asyncHandler(VoterController.update)); // inadd ko to
+app.delete('/api/voters/:id', asyncHandler(VoterController.delete)); // inadd ko to
 
 // Elections endpoints
 app.get('/api/elections', asyncHandler(ElectionsController.getElections));

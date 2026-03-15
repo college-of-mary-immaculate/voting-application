@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { loginVoter, setAuthToken } from '../services/api';
 import { useNavigate, Link } from 'react-router-dom';
+import { loginVoter, setAuthToken } from '../services/api';
 
 export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -25,17 +27,66 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setApiError('');
+    
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
+
+    setLoading(true);
+
     try {
+      // Try voter login first
       const res = await loginVoter(form);
       setAuthToken(res.data.token);
+      
+      // If voter login successful, go to elections
       navigate('/elections');
-    } catch (err) {
-      setApiError(err.response?.data?.error || 'Invalid email or password');
+    } catch (voterError) {
+      // If voter login fails, try admin login
+      try {
+        console.log('Attempting admin login...');
+        
+        const response = await fetch('http://localhost:3000/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email: form.email, password: form.password }),
+        });
+
+        const data = await response.json();
+        console.log('Login response:', data);
+
+        if (!response.ok) {
+          throw new Error(data.message || 'Login failed');
+        }
+
+        // Check if login was successful and user is admin
+        if (data.result?.status === 'success' && data.result.data?.type === 'admin') {
+          // Store token and user data in login app's localStorage (optional)
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.result.data));
+          
+          console.log('Login successful! Token stored:', localStorage.getItem('token'));
+          console.log('User stored:', localStorage.getItem('user'));
+          
+          // Pass token and user via URL parameters
+          const token = encodeURIComponent(data.token);
+          const user = encodeURIComponent(JSON.stringify(data.result.data));
+          
+          // Redirect to admin panel with token in URL
+          window.location.href = `http://localhost:5175/admin?token=${token}&user=${user}`;
+        } else {
+          setApiError('Invalid admin credentials');
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        setApiError('Login failed. Please try again.');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -75,6 +126,7 @@ export default function Login() {
                 errors.email ? 'shadow-[inset_5px_5px_10px_#fecaca,inset_-5px_-5px_10px_#ffffff]' : ''
               }`}
               placeholder="you@example.com"
+              disabled={loading}
             />
             {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
           </div>
@@ -91,11 +143,13 @@ export default function Login() {
                   errors.password ? 'shadow-[inset_5px_5px_10px_#fecaca,inset_-5px_-5px_10px_#ffffff]' : ''
                 }`}
                 placeholder="••••••••"
+                disabled={loading}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm font-semibold text-[#1e3a8a]/70 hover:text-[#1e3a8a] focus:outline-none uppercase tracking-wider"
+                disabled={loading}
               >
                 {showPassword ? 'Hide' : 'Show'}
               </button>
@@ -105,9 +159,10 @@ export default function Login() {
 
           <button
             type="submit"
-            className="w-full py-3 px-4 bg-[#1e3a8a] text-white font-semibold rounded-xl shadow-[8px_8px_16px_#b0c4de,-8px_-8px_16px_#ffffff] hover:bg-[#2563eb] hover:shadow-[inset_5px_5px_10px_#b0c4de,inset_-5px_-5px_10px_#ffffff] transition duration-200 text-sm sm:text-base"
+            disabled={loading}
+            className="w-full py-3 px-4 bg-[#1e3a8a] text-white font-semibold rounded-xl shadow-[8px_8px_16px_#b0c4de,-8px_-8px_16px_#ffffff] hover:bg-[#2563eb] hover:shadow-[inset_5px_5px_10px_#b0c4de,inset_-5px_-5px_10px_#ffffff] transition duration-200 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Log In
+            {loading ? 'Signing in...' : 'Log In'}
           </button>
         </form>
 

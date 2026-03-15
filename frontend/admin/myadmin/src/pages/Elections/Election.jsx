@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API from '../../utils/api';
 import './Election.css';
 
 const electionTypes = [
@@ -16,7 +17,6 @@ export default function Elections() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  // Form state (used for both create and edit)
   const [formData, setFormData] = useState({
     election_type_id: 3,
     name: '',
@@ -24,25 +24,20 @@ export default function Elections() {
     end_at: '',
   });
 
-  // Edit mode
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
 
-  // Fetch elections
   const fetchElections = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const res = await fetch('/api/elections');
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      const data = await API.get('/elections');
 
-      const json = await res.json();
-
-      if (json.status === 'success') {
-        setElections(json.data || []);
+      if (data.status === 'success') {
+        setElections(data.data || []);
       } else {
-        throw new Error(json.message || json.error || 'Backend error');
+        throw new Error(data.message || data.error || 'Backend error');
       }
     } catch (err) {
       setError(err.message || 'Failed to load elections');
@@ -56,13 +51,11 @@ export default function Elections() {
     fetchElections();
   }, []);
 
-  // Handle form input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Reset form and close
   const resetForm = () => {
     setFormData({
       election_type_id: 3,
@@ -75,7 +68,6 @@ export default function Elections() {
     setError(null);
   };
 
-  // Create or Update election
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -96,29 +88,25 @@ export default function Elections() {
     setSubmitting(true);
 
     try {
-      const method = editingId ? 'PUT' : 'POST';
-      const url = editingId ? `/api/elections/${editingId}` : '/api/elections';
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      let data;
+      if (editingId) {
+        data = await API.put(`/elections/${editingId}`, {
           name: formData.name.trim(),
           election_type_id: Number(formData.election_type_id),
           start_at: formData.start_at,
           end_at: formData.end_at,
-        }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || `HTTP error ${res.status}`);
+        });
+      } else {
+        data = await API.post('/elections', {
+          name: formData.name.trim(),
+          election_type_id: Number(formData.election_type_id),
+          start_at: formData.start_at,
+          end_at: formData.end_at,
+        });
       }
 
-      const json = await res.json();
-
-      if (json.status !== 'success') {
-        throw new Error(json.message || json.error || 'Operation failed');
+      if (data.status !== 'success') {
+        throw new Error(data.message || data.error || 'Operation failed');
       }
 
       alert(editingId ? 'Election updated successfully!' : 'Election created successfully!');
@@ -132,7 +120,6 @@ export default function Elections() {
     }
   };
 
-  // Start editing
   const handleEdit = (election) => {
     setEditingId(election.election_id);
     setFormData({
@@ -145,20 +132,13 @@ export default function Elections() {
     setError(null);
   };
 
-  // Delete election
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this election? This action cannot be undone.')) {
       return;
     }
 
     try {
-      const res = await fetch(`/api/elections/${id}`, { method: 'DELETE' });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || `HTTP error ${res.status}`);
-      }
-
+      await API.delete(`/elections/${id}`);
       alert('Election deleted successfully!');
       fetchElections();
     } catch (err) {
@@ -167,7 +147,6 @@ export default function Elections() {
     }
   };
 
-  // Filter by type (client-side)
   const filteredElections = selectedType === 0
     ? elections
     : elections.filter((el) => el.election_type_id === selectedType);

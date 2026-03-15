@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API from '../../utils/api';
 import './Admins.css';
 
 export default function Admins() {
@@ -20,13 +21,11 @@ export default function Admins() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch('/api/admins');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      if (json.status === 'success') {
-        setAdmins(json.data || []);
+      const data = await API.get('/admins');
+      if (data.status === 'success') {
+        setAdmins(data.data || []);
       } else {
-        throw new Error(json.error || 'Backend error');
+        throw new Error(data.error || 'Backend error');
       }
     } catch (err) {
       setError(err.message || 'Failed to load admins');
@@ -64,34 +63,25 @@ export default function Admins() {
     setSubmitting(true);
 
     try {
-      let res;
+      let data;
       if (editingId) {
         // UPDATE
-        res = await fetch(`/api/admins/${editingId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            full_name: formData.full_name.trim(),
-            email: formData.email.trim(),
-            password: formData.password || undefined, // only send if changed
-          }),
+        data = await API.put(`/admins/${editingId}`, {
+          full_name: formData.full_name.trim(),
+          email: formData.email.trim(),
+          password: formData.password || undefined,
         });
       } else {
         // CREATE
-        res = await fetch('/api/admins', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            full_name: formData.full_name.trim(),
-            email: formData.email.trim(),
-            password: formData.password.trim(),
-          }),
+        data = await API.post('/admins', {
+          full_name: formData.full_name.trim(),
+          email: formData.email.trim(),
+          password: formData.password.trim(),
         });
       }
 
-      const json = await res.json();
-      if (!res.ok || json.status !== 'success') {
-        throw new Error(json.error || 'Operation failed');
+      if (data.status !== 'success') {
+        throw new Error(data.error || 'Operation failed');
       }
 
       alert(editingId ? 'Admin updated successfully!' : 'Admin created successfully!');
@@ -109,7 +99,7 @@ export default function Admins() {
     setFormData({
       full_name: admin.full_name,
       email: admin.email,
-      password: '', // password field left empty for security
+      password: '',
     });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -119,10 +109,9 @@ export default function Admins() {
     if (!window.confirm('Are you sure you want to delete this admin?')) return;
 
     try {
-      const res = await fetch(`/api/admins/${id}`, { method: 'DELETE' });
-      const json = await res.json();
-      if (!res.ok || json.status !== 'success') {
-        throw new Error(json.error || 'Delete failed');
+      const data = await API.delete(`/admins/${id}`);
+      if (data.status !== 'success') {
+        throw new Error(data.error || 'Delete failed');
       }
       alert('Admin deleted successfully!');
       fetchAdmins();

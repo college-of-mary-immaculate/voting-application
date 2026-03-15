@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API from '../../utils/api';
 import './Dashboard.css';
 
 export default function Dashboard() {
@@ -20,19 +21,26 @@ export default function Dashboard() {
         setLoading(true);
         setError(null);
 
-        const res = await fetch('/api/dashboard/stats');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        console.log('🚀 Dashboard mounted, checking token...');
+        const token = localStorage.getItem('token');
+        console.log('Token in Dashboard:', token ? '✅ Present' : '❌ Missing');
+        
+        if (!token) {
+          throw new Error('No authentication token found');
+        }
 
-        const json = await res.json();
+        console.log('📡 Fetching dashboard stats...');
+        const data = await API.get('/dashboard/stats');
+        console.log('📊 Dashboard data received:', data);
 
-        if (json.status === 'success') {
-          setStats(json.data);
+        if (data.status === 'success') {
+          setStats(data.data);
         } else {
-          throw new Error(json.error || 'Failed to load stats');
+          throw new Error(data.error || 'Failed to load stats');
         }
       } catch (err) {
+        console.error('❌ Dashboard error:', err);
         setError(err.message || 'Could not load dashboard');
-        console.error(err);
       } finally {
         setLoading(false);
       }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API from '../../utils/api';
 import './Users.css';
 
 export default function Users() {
@@ -20,13 +21,11 @@ export default function Users() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch('/api/voters');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      if (json.status === 'success') {
-        setVoters(json.data || []);
+      const data = await API.get('/voters');
+      if (data.status === 'success') {
+        setVoters(data.data || []);
       } else {
-        throw new Error(json.error || 'Backend error');
+        throw new Error(data.error || 'Backend error');
       }
     } catch (err) {
       setError(err.message || 'Failed to load voters');
@@ -68,34 +67,25 @@ export default function Users() {
     setSubmitting(true);
 
     try {
-      let res;
+      let data;
       if (editingId) {
         // UPDATE
-        res = await fetch(`/api/voters/${editingId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            full_name: formData.full_name.trim(),
-            email: formData.email.trim(),
-            password: formData.password || undefined,
-          }),
+        data = await API.put(`/voters/${editingId}`, {
+          full_name: formData.full_name.trim(),
+          email: formData.email.trim(),
+          password: formData.password || undefined,
         });
       } else {
         // CREATE (use register endpoint)
-        res = await fetch('/api/voters/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fullname: formData.full_name.trim(),
-            email: formData.email.trim(),
-            password: formData.password.trim(),
-          }),
+        data = await API.post('/voters/register', {
+          fullname: formData.full_name.trim(),
+          email: formData.email.trim(),
+          password: formData.password.trim(),
         });
       }
 
-      const json = await res.json();
-      if (!res.ok || json.status !== 'success') {
-        throw new Error(json.error || 'Operation failed');
+      if (data.status !== 'success') {
+        throw new Error(data.error || 'Operation failed');
       }
 
       alert(editingId ? 'Voter updated successfully!' : 'Voter created successfully!');
@@ -123,10 +113,9 @@ export default function Users() {
     if (!window.confirm('Are you sure you want to delete this voter?')) return;
 
     try {
-      const res = await fetch(`/api/voters/${id}`, { method: 'DELETE' });
-      const json = await res.json();
-      if (!res.ok || json.status !== 'success') {
-        throw new Error(json.error || 'Delete failed');
+      const data = await API.delete(`/voters/${id}`);
+      if (data.status !== 'success') {
+        throw new Error(data.error || 'Delete failed');
       }
       alert('Voter deleted successfully!');
       fetchVoters();

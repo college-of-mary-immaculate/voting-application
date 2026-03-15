@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API from '../../utils/api';
 import './Candidates.css';
 
 export default function Candidates() {
@@ -22,13 +23,11 @@ export default function Candidates() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch('/api/candidates');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      if (json.status === 'success') {
-        setCandidates(json.data || []);
+      const data = await API.get('/candidates');
+      if (data.status === 'success') {
+        setCandidates(data.data || []);
       } else {
-        throw new Error(json.error || 'Backend error');
+        throw new Error(data.error || 'Backend error');
       }
     } catch (err) {
       setError(err.message || 'Failed to load candidates');
@@ -72,37 +71,27 @@ export default function Candidates() {
     setSubmitting(true);
 
     try {
-      let res;
+      let data;
       if (editingId) {
-        res = await fetch(`/api/candidates/${editingId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            position_id: Number(formData.position_id),
-            full_name: formData.full_name.trim(),
-            party_name: formData.party_name.trim() || null,
-            photo_url: formData.photo_url.trim() || null,
-            status: formData.status,
-          }),
+        data = await API.put(`/candidates/${editingId}`, {
+          position_id: Number(formData.position_id),
+          full_name: formData.full_name.trim(),
+          party_name: formData.party_name.trim() || null,
+          photo_url: formData.photo_url.trim() || null,
+          status: formData.status,
         });
       } else {
-        res = await fetch('/api/candidates', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            position_id: Number(formData.position_id),
-            full_name: formData.full_name.trim(),
-            party_name: formData.party_name.trim() || null,
-            photo_url: formData.photo_url.trim() || null,
-            status: formData.status,
-          }),
+        data = await API.post('/candidates', {
+          position_id: Number(formData.position_id),
+          full_name: formData.full_name.trim(),
+          party_name: formData.party_name.trim() || null,
+          photo_url: formData.photo_url.trim() || null,
+          status: formData.status,
         });
       }
 
-      const json = await res.json();
-
-      if (!res.ok || json.status !== 'success') {
-        throw new Error(json.error || 'Operation failed');
+      if (data.status !== 'success') {
+        throw new Error(data.error || 'Operation failed');
       }
 
       alert(editingId ? 'Candidate updated successfully!' : 'Candidate added successfully!');
@@ -133,15 +122,7 @@ export default function Candidates() {
     if (!window.confirm('Are you sure you want to delete this candidate?')) return;
 
     try {
-      const res = await fetch(`/api/candidates/${candidate_id}`, {
-        method: 'DELETE',
-      });
-
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        throw new Error(json.error || 'Delete failed');
-      }
-
+      await API.delete(`/candidates/${candidate_id}`);
       alert('Candidate deleted successfully!');
       fetchCandidates();
     } catch (err) {

@@ -128,7 +128,7 @@ INSERT INTO voters (full_name, email, password_hash) VALUES
 
 -- Absolute Admin
 INSERT INTO admins (full_name, email, password_hash)
-VALUES ('adminone', 'adminone@gmail.com', 'adminone');
+VALUES ('adminone', 'adminone@gmail.com', '$2b$10$h7EN/pWQw2q1mVUbX.oOcORWOKdQXStvTcApldc9ArRLqZWDt4UC.');
 
 -- Performance Indexes
 CREATE INDEX idx_votes_voter_election ON votes(voter_id, election_id);

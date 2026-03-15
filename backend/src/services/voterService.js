@@ -1,66 +1,7 @@
 const DBService = require("./dbService");
-const bcrypt = require("bcrypt");
 
 class VoterService {
-  static async create(fullname, email, password) {
-    if (!fullname || !email || !password) {
-      throw new Error("All fields are required.");
-    }
-
-    const exist = await DBService.read(
-      `SELECT voter_id FROM voters WHERE email = ?`,
-      [email],
-    );
-
-    if (exist.length > 0) {
-      throw new Error("This email is already registered.");
-    }
-
-    const hashedPwd = await bcrypt.hash(password, 10);
-
-    await DBService.write(
-      `INSERT INTO voters (full_name, email, password_hash)
-       VALUES (?, ?, ?)`,
-      [fullname, email, hashedPwd],
-    );
-
-    return {
-      status: "success",
-      message: "Voter Registered Successfully",
-    };
-  }
-
-  static async login(email, password) {
-    if (!email || !password) {
-      throw new Error("Email and password are required.");
-    }
-
-    const user = await DBService.read(`SELECT * FROM voters WHERE email = ?`, [
-      email,
-    ]);
-
-    if (user.length === 0) {
-      throw new Error("Invalid email or password.");
-    }
-
-    const voter = user[0];
-    const match = await bcrypt.compare(password, voter.password_hash);
-
-    if (!match) {
-      throw new Error("Invalid email or password.");
-    }
-
-    return {
-      status: "success",
-      message: "Login successful",
-      data: {
-        id: voter.voter_id,
-        email: voter.email,
-        fullname: voter.full_name,
-      },
-    };
-  }
-
+  
   static async getAll() {
     const voters = await DBService.read(
       `SELECT voter_id, full_name, email, created_at
@@ -78,45 +19,54 @@ class VoterService {
 
   static async getById(id) {
     const voters = await DBService.read(
-        `SELECT voter_id, full_name, email, has_voted, created_at
+      `SELECT voter_id, full_name, email, has_voted, created_at
          FROM voters WHERE voter_id = ?`,
-        [id]
+      [id],
     );
     return voters[0] || null;
-}
+  }
 
   static async update(id, fullname, email, password) {
-      const existing = await DBService.read(`SELECT voter_id FROM voters WHERE voter_id = ?`, [id]);
-      if (existing.length === 0) throw new Error("Voter not found");
+    const existing = await DBService.read(
+      `SELECT voter_id FROM voters WHERE voter_id = ?`,
+      [id],
+    );
+    if (existing.length === 0) throw new Error("Voter not found");
 
-      if (email) {
-          const duplicate = await DBService.read(
-              `SELECT voter_id FROM voters WHERE email = ? AND voter_id != ?`,
-              [email, id]
-          );
-          if (duplicate.length > 0) throw new Error("Email already in use");
-      }
+    if (email) {
+      const duplicate = await DBService.read(
+        `SELECT voter_id FROM voters WHERE email = ? AND voter_id != ?`,
+        [email, id],
+      );
+      if (duplicate.length > 0) throw new Error("Email already in use");
+    }
 
-      let sql = `UPDATE voters SET full_name = ?, email = ?`;
-      let params = [fullname || existing[0].full_name, email || existing[0].email];
+    let sql = `UPDATE voters SET full_name = ?, email = ?`;
+    let params = [
+      fullname || existing[0].full_name,
+      email || existing[0].email,
+    ];
 
-      if (password) {
-          const hashed = await bcrypt.hash(password, 10);
-          sql += `, password_hash = ?`;
-          params.push(hashed);
-      }
+    if (password) {
+      const hashed = await bcrypt.hash(password, 10);
+      sql += `, password_hash = ?`;
+      params.push(hashed);
+    }
 
-      sql += ` WHERE voter_id = ?`;
-      params.push(id);
+    sql += ` WHERE voter_id = ?`;
+    params.push(id);
 
-      await DBService.write(sql, params);
-      return { status: "success", message: "Voter updated" };
+    await DBService.write(sql, params);
+    return { status: "success", message: "Voter updated" };
   }
 
   static async delete(id) {
-      const result = await DBService.write(`DELETE FROM voters WHERE voter_id = ?`, [id]);
-      if (result.affectedRows === 0) throw new Error("Voter not found");
-      return { status: "success", message: "Voter deleted" };
+    const result = await DBService.write(
+      `DELETE FROM voters WHERE voter_id = ?`,
+      [id],
+    );
+    if (result.affectedRows === 0) throw new Error("Voter not found");
+    return { status: "success", message: "Voter deleted" };
   }
 
   static async castVote(voter_id, election_id, votes) {

@@ -18,12 +18,12 @@ class ElectionService {
 
     const existing = await DBService.read(
       `SELECT * FROM elections WHERE election_type_id = ? AND election_name = ?`,
-      [election_type_id, election_name]
+      [election_type_id, election_name],
     );
 
     if (existing.length > 0) {
       throw new Error(
-        "An election with this name already exists for the selected type."
+        "An election with this name already exists for the selected type.",
       );
     }
 
@@ -65,7 +65,7 @@ class ElectionService {
       await DBService.write(
         `INSERT INTO positions (election_id, position_name, max_vote_allowed)
          VALUES ${placeholders}`,
-        flattened
+        flattened,
       );
     }
 
@@ -80,7 +80,7 @@ class ElectionService {
        FROM elections e
        JOIN election_types t ON e.election_type_id = t.type_id
        WHERE e.election_id = ?`,
-      [insertedId]
+      [insertedId],
     );
 
     return {
@@ -103,7 +103,7 @@ class ElectionService {
          t.type_name
        FROM elections e
        JOIN election_types t ON e.election_type_id = t.type_id
-       ORDER BY e.start_at ASC`
+       ORDER BY e.start_at ASC`,
     );
 
     if (elections.length === 0) {
@@ -126,8 +126,7 @@ class ElectionService {
         timeLeft = Math.floor((end - now) / 1000);
       }
 
-      const status =
-        now > end ? "Closed" : isActive ? "Ongoing" : e.status;
+      const status = now > end ? "Closed" : isActive ? "Ongoing" : e.status;
 
       return {
         ...e,
@@ -145,13 +144,21 @@ class ElectionService {
   }
 
   //update
-  static async update(election_id, election_type_id, election_name, start_at, end_at) {
+  static async update(
+    election_id,
+    election_type_id,
+    election_name,
+    start_at,
+    end_at,
+  ) {
     if (!election_id) {
       throw new Error("election_id is required");
     }
 
     if (!election_type_id || !election_name || !start_at || !end_at) {
-      throw new Error("All fields are required: election_type_id, election_name, start_at, end_at");
+      throw new Error(
+        "All fields are required: election_type_id, election_name, start_at, end_at",
+      );
     }
 
     const startDate = formatForMySQL(start_at);
@@ -164,7 +171,7 @@ class ElectionService {
     // check if election exists
     const exists = await DBService.read(
       `SELECT election_id FROM elections WHERE election_id = ?`,
-      [election_id]
+      [election_id],
     );
 
     if (exists.length === 0) {
@@ -175,11 +182,13 @@ class ElectionService {
     const duplicate = await DBService.read(
       `SELECT election_id FROM elections 
        WHERE election_type_id = ? AND election_name = ? AND election_id != ?`,
-      [election_type_id, election_name, election_id]
+      [election_type_id, election_name, election_id],
     );
 
     if (duplicate.length > 0) {
-      throw new Error("Another election with this name already exists for the selected type.");
+      throw new Error(
+        "Another election with this name already exists for the selected type.",
+      );
     }
 
     // compute new status
@@ -208,7 +217,7 @@ class ElectionService {
       startDate,
       endDate,
       status,
-      election_id
+      election_id,
     ]);
 
     return {
@@ -220,8 +229,8 @@ class ElectionService {
         election_name,
         start_at: startDate,
         end_at: endDate,
-        status
-      }
+        status,
+      },
     };
   }
 
@@ -233,21 +242,74 @@ class ElectionService {
 
     const exists = await DBService.read(
       `SELECT election_id FROM elections WHERE election_id = ?`,
-      [election_id]
+      [election_id],
     );
 
     if (exists.length === 0) {
       throw new Error("Election not found");
     }
 
-    await DBService.write(
-      `DELETE FROM elections WHERE election_id = ?`,
-      [election_id]
-    );
+    await DBService.write(`DELETE FROM elections WHERE election_id = ?`, [
+      election_id,
+    ]);
 
     return {
       status: "success",
-      message: "Election deleted successfully"
+      message: "Election deleted successfully",
+    };
+  }
+
+  static async addPosition(election_id, position_name, max_vote_allowed) {
+    return PositionService.create(election_id, position_name, max_vote_allowed);
+  }
+
+  static async getPositions(election_id) {
+    return PositionService.getByElection(election_id);
+  }
+  static async getResults(election_id) {
+    const sql = `
+      SELECT
+        p.position_id,
+        p.position_name,
+        c.candidate_id,
+        c.full_name,
+        c.ballot_number,
+        COUNT(v.vote_id) AS vote_count
+      FROM positions p
+      JOIN candidates c
+        ON p.position_id = c.position_id
+      LEFT JOIN votes v
+        ON c.candidate_id = v.candidate_id
+      WHERE p.election_id = ?
+      GROUP BY p.position_id, c.candidate_id
+      ORDER BY p.position_id, c.ballot_number
+    `;
+
+    const rows = await DBService.read(sql, [election_id]);
+
+    const map = {};
+
+    rows.forEach((r) => {
+      if (!map[r.position_id]) {
+        map[r.position_id] = {
+          position_id: r.position_id,
+          position_name: r.position_name,
+          candidates: [],
+        };
+      }
+
+      map[r.position_id].candidates.push({
+        candidate_id: r.candidate_id,
+        full_name: r.full_name,
+        ballot_number: r.ballot_number,
+        votes: r.vote_count,
+      });
+    });
+
+    return {
+      status: "success",
+      election_id,
+      results: Object.values(map),
     };
   }
 }

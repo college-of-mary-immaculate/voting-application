@@ -31,7 +31,7 @@ export default function ElectionContainer({
   }, [endTime]);
 
   const handleSelect = (positionId, isMulti) => (value) => {
-    if (isExpired) return; // Disable if expired
+    if (isExpired) return;
     setVotes(prev => {
       if (typeof value === 'function') {
         return { ...prev, [positionId]: value(prev[positionId]) };
@@ -95,12 +95,11 @@ export default function ElectionContainer({
     }
   });
 
-  // Disable everything if expired
   const disabled = hasVoted || isExpired;
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {/* Background (unchanged) */}
+      {/* Background */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
@@ -118,30 +117,36 @@ export default function ElectionContainer({
       />
 
       {validationMessage && (
-        <div className="fixed top-5 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-xl shadow-2xl z-50 animate-slideDown">
+        <div className="fixed top-5 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-xl shadow-2xl z-50 animate-slideDown text-sm sm:text-base">
           ⚠️ {validationMessage}
         </div>
       )}
 
-      <div className="relative z-10 min-h-screen bg-gradient-to-br from-[#f8f9fa]/80 via-white/80 to-[#e9ecef]/80 backdrop-blur-sm py-10 px-4">
+      <div className="relative z-10 min-h-screen bg-gradient-to-br from-[#f8f9fa]/80 via-white/80 to-[#e9ecef]/80 backdrop-blur-sm py-6 sm:py-10 px-4">
         <div className="absolute top-0 left-0 w-96 h-96 bg-[#0f4c5c] opacity-20 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#f4a261] opacity-20 rounded-full blur-3xl"></div>
 
         <div className="relative max-w-7xl mx-auto">
-          {/* Header with countdown */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+          {/* Header - responsive stacking */}
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
             <div>
-              <h1 className="text-5xl font-light text-white tracking-tight drop-shadow-lg">{electionName}</h1>
-              <p className="text-white/90 text-lg mt-2 drop-shadow">{electionTagline}</p>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-light text-white tracking-tight drop-shadow-lg">
+                {electionName}
+              </h1>
+              <p className="text-white/90 text-base sm:text-lg mt-2 drop-shadow">
+                {electionTagline}
+              </p>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full lg:w-auto">
               {endTime && <CountdownTimer endTime={endTime} />}
-              <div className="bg-white/70 backdrop-blur-md rounded-3xl p-5 shadow-lg border border-white/50">
-                <div className="flex gap-8">
+              <div className="bg-white/70 backdrop-blur-md rounded-3xl p-4 sm:p-5 shadow-lg border border-white/50 w-full sm:w-auto overflow-x-auto">
+                <div className="flex gap-4 sm:gap-8 min-w-max">
                   {positions.map(pos => (
                     <div key={pos.id} className="text-center">
-                      <div className="text-sm uppercase tracking-wider text-[#5a6b7a]">{pos.shortTitle || pos.title}</div>
-                      <div className="text-2xl font-semibold text-[#0f4c5c] mt-1">
+                      <div className="text-xs uppercase tracking-wider text-[#5a6b7a]">
+                        {pos.shortTitle || pos.title}
+                      </div>
+                      <div className="text-xl sm:text-2xl font-semibold text-[#0f4c5c] mt-1">
                         {pos.maxVotes > 1
                           ? `${votes[pos.id]?.length || 0}/${pos.maxVotes}`
                           : votes[pos.id] ? '✓' : '—'}
@@ -181,7 +186,7 @@ export default function ElectionContainer({
             <button
               onClick={handleSubmitClick}
               disabled={disabled}
-              className={`group text-lg font-medium py-4 px-14 rounded-full transition-all duration-300 transform hover:scale-105 ${
+              className={`group text-base sm:text-lg font-medium py-3 sm:py-4 px-10 sm:px-14 rounded-full transition-all duration-300 transform hover:scale-105 ${
                 disabled
                   ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   : 'bg-[#0f4c5c] text-white shadow-xl hover:shadow-2xl hover:bg-[#1a6b7f]'
@@ -192,10 +197,14 @@ export default function ElectionContainer({
           </div>
 
           {isExpired && (
-            <p className="text-center text-red-500 mt-6 font-medium animate-pulse drop-shadow">Voting period has ended.</p>
+            <p className="text-center text-red-500 mt-6 font-medium animate-pulse drop-shadow">
+              Voting period has ended.
+            </p>
           )}
           {hasVoted && !isExpired && (
-            <p className="text-center text-[#2ecc71] mt-6 font-medium animate-pulse drop-shadow">Thank you for participating!</p>
+            <p className="text-center text-[#2ecc71] mt-6 font-medium animate-pulse drop-shadow">
+              Thank you for participating!
+            </p>
           )}
         </div>
       </div>

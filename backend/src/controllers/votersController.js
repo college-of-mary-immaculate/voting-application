@@ -29,7 +29,9 @@ class VoterController {
 
     // inadd ko to
     static async getAll(req, res) {
-        const result = await VoterService.getAll();
+        const { election_id } = req.query;
+        const electionId = election_id ? Number(election_id) : null;
+        const result = await VoterService.getAll(electionId);
         res.status(200).json(result);
     }
 

@@ -43,6 +43,20 @@ services:
     env_file:
       - ./backend/.env
     command: sh -c "npm install && npm start"
+  ui:
+    build:
+      context: ./UI
+      dockerfile: Dockerfile
+    container_name: voting_ui
+    working_dir: /app
+    volumes:
+      - ./UI:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    command: sh -c "npm install && npm run dev -- --host"
 
 volumes:
   master_data:

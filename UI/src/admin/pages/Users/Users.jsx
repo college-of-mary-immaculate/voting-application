@@ -17,11 +17,21 @@ export default function Users() {
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
 
-  const fetchVoters = async () => {
+  const [elections, setElections] = useState([]);
+  const [selectedElection, setSelectedElection] = useState(null);
+
+  // Fetch voters and optionally include election vote status
+  const fetchVoters = async (electionId = null) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await API.get('/voters');
+
+      let url = '/voters';
+      if (electionId) {
+        url += `?election_id=${electionId}`;
+      }
+
+      const data = await API.get(url);
       if (data.status === 'success') {
         setVoters(data.data || []);
       } else {
@@ -35,9 +45,28 @@ export default function Users() {
     }
   };
 
+  // Fetch elections for selection
+  const fetchElections = async () => {
+    try {
+      const data = await API.get('/elections');
+      if (data.status === 'success') {
+        setElections(data.data || []);
+        if (data.data.length > 0) setSelectedElection(data.data[0].election_id);
+      }
+    } catch (err) {
+      console.error('Failed to load elections:', err);
+    }
+  };
+
   useEffect(() => {
-    fetchVoters();
+    fetchElections();
   }, []);
+
+  useEffect(() => {
+    if (selectedElection) {
+      fetchVoters(selectedElection);
+    }
+  }, [selectedElection]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -76,7 +105,7 @@ export default function Users() {
           password: formData.password || undefined,
         });
       } else {
-        // CREATE (use register endpoint)
+        // CREATE
         data = await API.post('/voters/register', {
           fullname: formData.full_name.trim(),
           email: formData.email.trim(),
@@ -90,7 +119,7 @@ export default function Users() {
 
       alert(editingId ? 'Voter updated successfully!' : 'Voter created successfully!');
       resetForm();
-      fetchVoters();
+      fetchVoters(selectedElection);
     } catch (err) {
       setError(err.message || 'Failed to save voter');
     } finally {
@@ -118,7 +147,7 @@ export default function Users() {
         throw new Error(data.error || 'Delete failed');
       }
       alert('Voter deleted successfully!');
-      fetchVoters();
+      fetchVoters(selectedElection);
     } catch (err) {
       alert(`Error: ${err.message}`);
     }
@@ -131,6 +160,21 @@ export default function Users() {
       <div className="page-header">
         <h1 className="page-title">Manage Voters</h1>
         <p className="page-subtitle">Create, edit, and manage voter accounts</p>
+      </div>
+
+      {/* Election Selector */}
+      <div className="election-selector">
+        <label>Select Election:</label>
+        <select
+          value={selectedElection || ''}
+          onChange={(e) => setSelectedElection(e.target.value)}
+        >
+          {elections.map(el => (
+            <option key={el.election_id} value={el.election_id}>
+              {el.election_name}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Form Card */}
@@ -238,18 +282,10 @@ export default function Users() {
                     </td>
                     <td>{new Date(v.created_at).toLocaleString()}</td>
                     <td className="actions-cell">
-                      <button
-                        className="btn btn-edit"
-                        onClick={() => handleEdit(v)}
-                        disabled={submitting}
-                      >
+                      <button className="btn btn-edit" onClick={() => handleEdit(v)} disabled={submitting}>
                         Edit
                       </button>
-                      <button
-                        className="btn btn-delete"
-                        onClick={() => handleDelete(v.voter_id)}
-                        disabled={submitting}
-                      >
+                      <button className="btn btn-delete" onClick={() => handleDelete(v.voter_id)} disabled={submitting}>
                         Delete
                       </button>
                     </td>

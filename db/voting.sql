@@ -123,7 +123,8 @@ INSERT INTO candidates (position_id, ballot_number, full_name, party_name) VALUE
 
 -- Sample Voters
 INSERT INTO voters (full_name, email, password_hash) VALUES
-('Alice Johnson', 'alice@example.com', 'hashed_pass_123'),
+('Alice Johnson', 'alice@example.com', '$2b$10$mK29hX5kZUG5xUmmKRcW4..OsClI9rr6e..uod64qTGcxWgSm7kn2'),
+-- alice password: "alices"
 ('Bob Martinez', 'bob@example.com', 'hashed_pass_456');
 
 -- Absolute Admin

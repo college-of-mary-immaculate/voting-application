@@ -1,6 +1,31 @@
 const VoterService = require("../services/voterService");
+const AccountService = require("../services/accountService"); // Add this import
 
 class VoterController {
+
+    // ADD THIS METHOD
+    static async register(req, res) {
+        try {
+            const { fullname, email, password } = req.body;
+            const result = await AccountService.create(fullname, email, password);
+            res.status(201).json(result);
+        } catch (error) {
+            console.error('Registration error:', error);
+            res.status(500).json({ status: "error", message: error.message });
+        }
+    }
+
+    // ADD THIS METHOD
+    static async login(req, res) {
+        try {
+            const { email, password } = req.body;
+            const result = await AccountService.login(email, password);
+            res.status(200).json(result);
+        } catch (error) {
+            console.error('Login error:', error);
+            res.status(500).json({ status: "error", message: error.message });
+        }
+    }
 
     // inadd ko to
     static async getAll(req, res) {
@@ -21,11 +46,11 @@ class VoterController {
     }
 
     static async getById(req, res) {
-    const result = await VoterService.getById(req.params.id);
-    if (!result) {
-        return res.status(404).json({ status: "error", error: "Voter not found" });
-    }
-    res.json({ status: "success", data: result });
+        const result = await VoterService.getById(req.params.id);
+        if (!result) {
+            return res.status(404).json({ status: "error", error: "Voter not found" });
+        }
+        res.json({ status: "success", data: result });
     }
 
     static async update(req, res) {

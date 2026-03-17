@@ -73,7 +73,7 @@ export default function Admins() {
         });
       } else {
         // CREATE
-        data = await API.post('/admins', {
+        data = await API.post('/admins/create', {
           full_name: formData.full_name.trim(),
           email: formData.email.trim(),
           password: formData.password.trim(),

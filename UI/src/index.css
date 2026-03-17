@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+/* ===== Neumorphic styles (from voter index.css) ===== */
+.neumorphic-card {
+  background: #eef5ff;
+  border-radius: 1.5rem;
+  box-shadow: 20px 20px 60px #b0c4de, -20px -20px 60px #ffffff;
+}
+
+.neumorphic-input {
+  background: #eef5ff;
+  border-radius: 0.75rem;
+  box-shadow: inset 5px 5px 10px #b0c4de, inset -5px -5px 10px #ffffff;
+}
+
+.neumorphic-input-error {
+  box-shadow: inset 5px 5px 10px #fecaca, inset -5px -5px 10px #ffffff;
+}
+
+.neumorphic-button {
+  background: #1e3a8a;
+  color: white;
+  border-radius: 0.75rem;
+  box-shadow: 8px 8px 16px #b0c4de, -8px -8px 16px #ffffff;
+  transition: all 0.2s;
+}
+
+.neumorphic-button:hover {
+  background: #2563eb;
+  box-shadow: inset 5px 5px 10px #b0c4de, inset -5px -5px 10px #ffffff;
+}
+
+.voter-bg {
+  background-image: url('https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?q=80&w=2070&auto=format&fit=crop');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.2;
+  filter: blur(4px);
+}
+
+.voter-overlay {
+  background: rgba(0,0,0,0.1);
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+}

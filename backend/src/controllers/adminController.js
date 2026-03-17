@@ -1,88 +1,68 @@
-const DBService = require('../services/dbService');
-const asyncHandler = require('../utils/asyncHandler');
-const bcrypt = require('bcrypt');
+const AdminService = require("../services/adminService");
+const asyncHandler = require("../utils/asyncHandler");
 
-exports.getAllAdmins = asyncHandler(async (req, res) => {
-  const rows = await DBService.read(
-    'SELECT admin_id, full_name, email, created_at FROM admins ORDER BY created_at DESC'
-  );
-  res.json({ status: 'success', data: rows });
-});
-
-exports.getAdminById = asyncHandler(async (req, res) => {
-  const rows = await DBService.read(
-    'SELECT admin_id, full_name, email, created_at FROM admins WHERE admin_id = ?',
-    [req.params.id]
-  );
-  if (rows.length === 0) {
-    return res.status(404).json({ status: 'error', error: 'Admin not found' });
-  }
-  res.json({ status: 'success', data: rows[0] });
-});
-
-exports.createAdmin = asyncHandler(async (req, res) => {
-  const { full_name, email, password } = req.body;
-  if (!full_name || !email || !password) {
-    return res.status(400).json({ status: 'error', error: 'All fields required' });
-  }
-
-  const existing = await DBService.read('SELECT admin_id FROM admins WHERE email = ?', [email]);
-  if (existing.length > 0) {
-    return res.status(409).json({ status: 'error', error: 'Email already in use' });
-  }
-
-  const hashedPassword = await bcrypt.hash(password, 10);
-  const result = await DBService.write(
-    'INSERT INTO admins (full_name, email, password_hash) VALUES (?, ?, ?)',
-    [full_name, email, hashedPassword]
-  );
-
-  res.status(201).json({
-    status: 'success',
-    data: { admin_id: result.insertId, full_name, email }
+class AdminController {
+  static getAll = asyncHandler(async (req, res) => {
+    const result = await AdminService.getAll();
+    res.json(result);
   });
-});
 
-exports.updateAdmin = asyncHandler(async (req, res) => {
-  const { full_name, email, password } = req.body;
-  const adminId = req.params.id;
+  static getById = asyncHandler(async (req, res) => {
+    const result = await AdminService.getById(req.params.id);
+    res.json(result);
+  });
 
-  const admin = await DBService.read('SELECT admin_id FROM admins WHERE admin_id = ?', [adminId]);
-  if (admin.length === 0) {
-    return res.status(404).json({ status: 'error', error: 'Admin not found' });
-  }
+  static create = asyncHandler(async (req, res) => {
+    const result = await AdminService.create(req.body);
+    res.status(201).json(result);
+  });
 
-  if (email) {
-    const existing = await DBService.read(
-      'SELECT admin_id FROM admins WHERE email = ? AND admin_id != ?',
-      [email, adminId]
-    );
-    if (existing.length > 0) {
-      return res.status(409).json({ status: 'error', error: 'Email already in use' });
+  static update = asyncHandler(async (req, res) => {
+    const result = await AdminService.update(req.params.id, req.body);
+    res.json(result);
+  });
+
+  static delete = asyncHandler(async (req, res) => {
+    const result = await AdminService.delete(req.params.id);
+    res.json(result);
+  });
+
+  static assignVoter = asyncHandler(async (req, res) => {
+    const { voter_id, election_id } = req.body;
+
+    if (!voter_id || !election_id) {
+      return res.status(400).json({
+        status: "error",
+        message: "voter_id and election_id are required",
+      });
     }
-  }
 
-  let sql = 'UPDATE admins SET full_name = ?, email = ?';
-  const params = [full_name || admin[0].full_name, email || admin[0].email];
+    const result = await AdminService.assignVoterToElection(
+      Number(voter_id),
+      Number(election_id),
+    );
 
-  if (password) {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    sql += ', password_hash = ?';
-    params.push(hashedPassword);
-  }
+    res.json(result);
+  });
 
-  sql += ' WHERE admin_id = ?';
-  params.push(adminId);
+  static bulkAssignVoters = asyncHandler(async (req, res) => {
+    const election_id = req.params.electionId;
+    const {voter_ids } = req.body;
 
-  await DBService.write(sql, params);
+    if (!election_id || !Array.isArray(voter_ids)) {
+      return res.status(400).json({
+        status: "error",
+        message: "election_id and voter_ids (array) are required",
+      });
+    }
 
-  res.json({ status: 'success', message: 'Admin updated' });
-});
+    const result = await AdminService.bulkAssignVotersToElection(
+      Number(election_id),
+      voter_ids,
+    );
 
-exports.deleteAdmin = asyncHandler(async (req, res) => {
-  const result = await DBService.write('DELETE FROM admins WHERE admin_id = ?', [req.params.id]);
-  if (result.affectedRows === 0) {
-    return res.status(404).json({ status: 'error', error: 'Admin not found' });
-  }
-  res.json({ status: 'success', message: 'Admin deleted' });
-});
+    res.json(result);
+  });
+}
+
+module.exports = AdminController;

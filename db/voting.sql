@@ -69,7 +69,6 @@ CREATE TABLE voters (
     full_name VARCHAR(150) NOT NULL,
     email VARCHAR(150) NOT NULL UNIQUE, -- Added UNIQUE for security
     password_hash VARCHAR(255) NOT NULL,
-    has_voted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
@@ -85,6 +84,14 @@ CREATE TABLE votes (
     CONSTRAINT fk_votes_election FOREIGN KEY (election_id) REFERENCES elections(election_id)
 ) ENGINE=InnoDB;
 
+CREATE TABLE voter_elections (
+    voter_id INT NOT NULL,
+    election_id INT NOT NULL,
+    PRIMARY KEY (voter_id, election_id),
+    FOREIGN KEY (voter_id) REFERENCES voters(voter_id),
+    FOREIGN KEY (election_id) REFERENCES elections(election_id)
+);
+
 -- 8. Admins
 CREATE TABLE admins (
     admin_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -94,6 +101,9 @@ CREATE TABLE admins (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
+
+ALTER TABLE votes ADD CONSTRAINT unique_vote_per_voter_per_election 
+UNIQUE(voter_id, election_id);
 -- =========================================
 -- SEED DATA
 -- =========================================

@@ -32,7 +32,10 @@ export default function Dashboard() {
         console.log('📡 Fetching dashboard stats...');
         const data = await API.get('/dashboard/stats');
         console.log('📊 Dashboard data received:', data);
-
+        if (!data || data.status !== 'success') {
+          throw new Error(data?.error || 'Failed to load stats');
+        }
+        setStats(data.data);
         if (data.status === 'success') {
           setStats(data.data);
         } else {

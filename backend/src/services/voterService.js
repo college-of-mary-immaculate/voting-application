@@ -126,12 +126,6 @@ class VoterService {
     return { status: "success", message: "Voter deleted successfully" };
   }
 
-  /**
-   * Cast vote(s) in an election
-   * @param {number} voter_id
-   * @param {number} election_id
-   * @param {Array<{position_id: number, ballot_number: number}>} votes
-   */
   static async castVote(voter_id, election_id, votes) {
     if (
       !voter_id ||
@@ -142,125 +136,118 @@ class VoterService {
       throw new Error("Missing required voting information");
     }
 
-    await DBService.transaction(async (conn) => {
-      // ─────────────────────────────────────────────
-      // 1. Voter exists?
-      const voter = await conn.read(`SELECT 1 FROM voters WHERE voter_id = ?`, [
-        voter_id,
-      ]);
-      if (voter.length === 0) throw new Error("Voter not found");
+    voter_id = Number(voter_id);
+    election_id = Number(election_id);
 
-      // ─────────────────────────────────────────────
-      // 2. Voter eligible for this election?
-      const eligible = await conn.read(
-        `SELECT 1 FROM voter_elections 
-         WHERE voter_id = ? AND election_id = ?`,
-        [voter_id, election_id],
+    // 1️⃣ Voter exists
+    const voter = await DBService.read(
+      `SELECT 1 FROM voters WHERE voter_id = ? LIMIT 1`,
+      [voter_id],
+    );
+    if (voter.length === 0) throw new Error("Voter not found");
+
+    // 2️⃣ Voter eligible
+    const eligible = await DBService.read(
+      `SELECT 1 FROM voter_elections WHERE voter_id = ? AND election_id = ? LIMIT 1`,
+      [voter_id, election_id],
+    );
+    if (eligible.length === 0)
+      throw new Error("You are not eligible to vote in this election");
+
+    // 3️⃣ Election ongoing
+    const election = await DBService.read(
+      `SELECT 1 FROM elections WHERE election_id = ? AND status = 'Ongoing' LIMIT 1`,
+      [election_id],
+    );
+    if (election.length === 0)
+      throw new Error("This election is not currently active");
+
+    // 4️⃣ Already voted? ✅ Use master to avoid replication lag
+    const alreadyVoted = await DBService.write(
+      `SELECT 1 FROM votes WHERE voter_id = ? AND election_id = ? LIMIT 1`,
+      [voter_id, election_id],
+    );
+    if (alreadyVoted.length > 0) {
+      throw new Error("You have already voted in this election");
+    }
+
+    // 5️⃣ Validate votes and collect rules
+    const positionRules = {};
+    const validCandidateIds = [];
+
+    for (const vote of votes) {
+      const { position_id, ballot_number } = vote;
+
+      const cand = await DBService.read(
+        `SELECT 
+         c.candidate_id,
+         c.ballot_number,
+         p.position_name,
+         p.max_vote_allowed
+       FROM candidates c
+       JOIN positions p ON c.position_id = p.position_id
+       WHERE p.election_id = ?
+         AND c.position_id = ?
+         AND c.ballot_number = ?
+         AND c.status = 'Active'
+       LIMIT 1`,
+        [election_id, position_id, ballot_number],
       );
-      if (eligible.length === 0) {
-        throw new Error("You are not eligible to vote in this election");
-      }
 
-      // ─────────────────────────────────────────────
-      // 3. Election is ongoing?
-      const election = await conn.read(
-        `SELECT 1 FROM elections 
-         WHERE election_id = ? AND status = 'Ongoing'`,
-        [election_id],
-      );
-      if (election.length === 0) {
-        throw new Error("This election is not currently active");
-      }
-
-      // ─────────────────────────────────────────────
-      // 4. Already voted?
-      const alreadyVoted = await conn.read(
-        `SELECT 1 FROM votes 
-         WHERE voter_id = ? AND election_id = ? 
-         LIMIT 1`,
-        [voter_id, election_id],
-      );
-      if (alreadyVoted.length > 0) {
-        throw new Error("You have already voted in this election");
-      }
-
-      // ─────────────────────────────────────────────
-      // 5. Load valid candidates + position rules
-      const positionRules = {};
-      const validCandidateIds = [];
-
-      for (const vote of votes) {
-        const { position_id, ballot_number } = vote;
-
-        const cand = await conn.read(
-          `SELECT 
-             c.candidate_id,
-             c.ballot_number,
-             p.position_name,
-             p.max_vote_allowed
-           FROM candidates c
-           JOIN positions p ON c.position_id = p.position_id
-           WHERE p.election_id = ?
-             AND c.position_id = ?
-             AND c.ballot_number = ?
-             AND c.status = 'Active'`,
-          [election_id, position_id, ballot_number],
+      if (cand.length === 0) {
+        throw new Error(
+          `Invalid or inactive candidate for position ${position_id}, ballot ${ballot_number}`,
         );
-
-        if (cand.length === 0) {
-          throw new Error(
-            `Invalid or inactive candidate for position ${position_id}, ballot ${ballot_number}`,
-          );
-        }
-
-        const c = cand[0];
-        validCandidateIds.push(c.candidate_id);
-
-        if (!positionRules[position_id]) {
-          positionRules[position_id] = {
-            name: c.position_name,
-            max: c.max_vote_allowed,
-            count: 0,
-          };
-        }
-
-        positionRules[position_id].count++;
       }
 
-      // ─────────────────────────────────────────────
-      // 6. Enforce max votes per position
-      for (const posId in positionRules) {
-        const rule = positionRules[posId];
-        if (rule.count > rule.max) {
-          throw new Error(
-            `You may vote for up to ${rule.max} candidate(s) for ${rule.name}. You selected ${rule.count}.`,
-          );
-        }
+      const c = cand[0];
+      validCandidateIds.push(c.candidate_id);
+
+      if (!positionRules[position_id]) {
+        positionRules[position_id] = {
+          name: c.position_name,
+          max: Number(c.max_vote_allowed),
+          count: 0,
+        };
       }
+      positionRules[position_id].count++;
+    }
 
-      // ─────────────────────────────────────────────
-      // 7. Insert all votes (already in transaction)
-      if (validCandidateIds.length > 0) {
-        const placeholders = validCandidateIds
-          .map(() => "(?, ?, ?)")
-          .join(", ");
-        const values = [];
-        validCandidateIds.forEach((cid) => {
-          values.push(voter_id, cid, election_id);
-        });
+    // 6️⃣ Enforce max votes per position
+    for (const posId in positionRules) {
+      const rule = positionRules[posId];
+      if (rule.count > rule.max) {
+        throw new Error(
+          `You may vote for up to ${rule.max} candidate(s) for ${rule.name}. You selected ${rule.count}.`,
+        );
+      }
+    }
 
-        await conn.write(
-          `INSERT INTO votes (voter_id, candidate_id, election_id) 
-           VALUES ${placeholders}`,
+    // 7️⃣ Deduplicate candidate IDs before insert
+    const uniqueCandidateIds = [...new Set(validCandidateIds)];
+
+    if (uniqueCandidateIds.length > 0) {
+      const placeholders = uniqueCandidateIds.map(() => "(?, ?, ?)").join(", ");
+      const values = [];
+      uniqueCandidateIds.forEach((cid) =>
+        values.push(voter_id, cid, election_id),
+      );
+
+      try {
+        // Insert all votes; duplicate candidate inserts will fail safely
+        await DBService.write(
+          `INSERT INTO votes (voter_id, candidate_id, election_id) VALUES ${placeholders}`,
           values,
         );
+      } catch (err) {
+        if (err.code === "ER_DUP_ENTRY") {
+          throw new Error(
+            "You have already voted for one or more of the selected candidates",
+          );
+        }
+        throw err;
       }
-    });
-
-    return {
-      status: "success",
-      message: "Your vote has been successfully recorded.",
-    };
+    }
   }
 }
 

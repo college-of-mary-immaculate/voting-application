@@ -24,7 +24,12 @@ export default function NationalElection() {
         setError('');
 
         const electionsRes = await getElections();
-        const elections = electionsRes.data.data || [];
+        const electionsData = electionsRes.data.data || [];
+        
+        const elections = Array.isArray(electionsData)
+          ? electionsData
+          : [electionsData];
+
         const nationalElection = elections.find(e => e.election_type_id === 1 && e.status !== 'Closed');
         if (!nationalElection) {
           setError('No active national election found.');
@@ -102,11 +107,12 @@ export default function NationalElection() {
 
   return (
     <ElectionContainer
-      electionName="National Election"
-      electionTagline="Choose the next leaders of the country"
+      electionName={election.election_name}
+      electionTagline="Choose your candidates"
       positions={positions}
       onSubmitVotes={handleSubmit}
-      endTime={new Date(Date.now() + 2 * 60 * 1000)} // 2 minutes from now
+      endTime={election.end_at}
+      serverTime={new Date().toISOString()}
     />
   );
 }

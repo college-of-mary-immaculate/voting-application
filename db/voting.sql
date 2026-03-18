@@ -144,3 +144,11 @@ VALUES ('adminone', 'adminone@gmail.com', '$2b$10$h7EN/pWQw2q1mVUbX.oOcORWOKdQXS
 -- Performance Indexes
 CREATE INDEX idx_votes_voter_election ON votes(voter_id, election_id);
 CREATE INDEX idx_candidates_position ON candidates(position_id);
+
+-- 1. Drop the old UNIQUE constraint
+ALTER TABLE votes
+DROP INDEX unique_vote_per_voter_per_election;
+
+-- 2. Add a new UNIQUE constraint per candidate per election
+ALTER TABLE votes
+ADD UNIQUE KEY unique_vote_per_voter_candidate_election (voter_id, candidate_id, election_id);

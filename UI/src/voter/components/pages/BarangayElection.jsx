@@ -1,19 +1,24 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getElections, getCandidates, isAuthenticated, castVote } from '../../services/api';
-import ElectionContainer from '../elections/ElectionContainer';
-import { processElectionData } from '../../utils/electionHelpers';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  getElections,
+  getCandidates,
+  isAuthenticated,
+  castVote,
+} from "../../services/api";
+import ElectionContainer from "../elections/ElectionContainer";
+import { processElectionData } from "../../utils/electionHelpers";
 
 export default function BarangayElection() {
   const navigate = useNavigate();
   const [positions, setPositions] = useState([]);
   const [electionId, setElectionId] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!isAuthenticated()) {
-      navigate('/login');
+      navigate("/login");
     }
   }, [navigate]);
 
@@ -21,27 +26,40 @@ export default function BarangayElection() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        setError('');
+        setError("");
 
         const electionsRes = await getElections();
-        const elections = electionsRes.data.data || [];
-        const barangayElection = elections.find(e => e.election_type_id === 2 && e.status !== 'Closed');
+        const electionsData = electionsRes.data.data;
+
+        // normalize to array
+        const elections = Array.isArray(electionsData)
+          ? electionsData
+          : [electionsData];
+
+        const barangayElection = elections.find(
+          (e) => e.election_type_id === 2 && e.status !== "Closed",
+        );
         if (!barangayElection) {
-          setError('No active barangay election found.');
+          setError("No active barangay election found.");
           setLoading(false);
           return;
         }
 
         const candidatesRes = await getCandidates();
         const allCandidates = candidatesRes.data.data || [];
-        const electionCandidates = allCandidates.filter(c => c.election_id === barangayElection.election_id);
+        const electionCandidates = allCandidates.filter(
+          (c) => c.election_id === barangayElection.election_id,
+        );
 
-        const { electionId, positions } = processElectionData(barangayElection, electionCandidates);
+        const { electionId, positions } = processElectionData(
+          barangayElection,
+          electionCandidates,
+        );
         setElectionId(electionId);
         setPositions(positions);
       } catch (err) {
-        console.error('Failed to load election data:', err);
-        setError('Failed to load election data. Please try again.');
+        console.error("Failed to load election data:", err);
+        setError("Failed to load election data. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -53,22 +71,28 @@ export default function BarangayElection() {
   const handleSubmit = async (voteData) => {
     try {
       const votes = [];
-      voteData.forEach(pos => {
+      voteData.forEach((pos) => {
         if (Array.isArray(pos.selected)) {
-          pos.selected.forEach(candidateId => {
+          pos.selected.forEach((candidateId) => {
             const candidate = positions
-              .find(p => p.id === pos.positionId)
-              ?.candidates.find(c => c.id === candidateId);
+              .find((p) => p.id === pos.positionId)
+              ?.candidates.find((c) => c.id === candidateId);
             if (candidate) {
-              votes.push({ position_id: pos.positionId, ballot_number: candidate.ballot_number });
+              votes.push({
+                position_id: pos.positionId,
+                ballot_number: candidate.ballot_number,
+              });
             }
           });
         } else if (pos.selected) {
           const candidate = positions
-            .find(p => p.id === pos.positionId)
-            ?.candidates.find(c => c.id === pos.selected);
+            .find((p) => p.id === pos.positionId)
+            ?.candidates.find((c) => c.id === pos.selected);
           if (candidate) {
-            votes.push({ position_id: pos.positionId, ballot_number: candidate.ballot_number });
+            votes.push({
+              position_id: pos.positionId,
+              ballot_number: candidate.ballot_number,
+            });
           }
         }
       });
@@ -76,8 +100,8 @@ export default function BarangayElection() {
       await castVote({ election_id: electionId, votes });
       return Promise.resolve();
     } catch (err) {
-      console.error('Vote submission failed:', err);
-      console.error('Error response:', err.response?.data);
+      console.error("Vote submission failed:", err);
+      console.error("Error response:", err.response?.data);
       throw err;
     }
   };
@@ -85,7 +109,9 @@ export default function BarangayElection() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-        <div className="animate-pulse text-2xl text-indigo-600">Loading Barangay Election...</div>
+        <div className="animate-pulse text-2xl text-indigo-600">
+          Loading Barangay Election...
+        </div>
       </div>
     );
   }
@@ -102,11 +128,12 @@ export default function BarangayElection() {
 
   return (
     <ElectionContainer
-      electionName="Barangay Election"
-      electionTagline="Vote for your local leaders"
+      electionName={election.election_name}
+      electionTagline="Choose your barangay officers"
       positions={positions}
       onSubmitVotes={handleSubmit}
-      endTime={new Date(Date.now() + 2 * 60 * 1000)} // 2 minutes from now
+      endTime={election.end_at}
+      serverTime={new Date().toISOString()}
     />
   );
 }

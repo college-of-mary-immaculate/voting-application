@@ -6,17 +6,21 @@ import { processElectionData } from '../../utils/electionHelpers';
 
 export default function ClassElection() {
   const navigate = useNavigate();
+
   const [positions, setPositions] = useState([]);
   const [electionId, setElectionId] = useState(null);
+  const [election, setElection] = useState(null); // ✅ NEW
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // --- Auth check
   useEffect(() => {
     if (!isAuthenticated()) {
       navigate('/login');
     }
   }, [navigate]);
 
+  // --- Fetch data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -24,19 +28,38 @@ export default function ClassElection() {
         setError('');
 
         const electionsRes = await getElections();
-        const elections = electionsRes.data.data || [];
-        const classElection = elections.find(e => e.election_type_id === 3 && e.status !== 'Closed');
+        const electionsData = electionsRes.data.data || [];
+
+        const elections = Array.isArray(electionsData)
+          ? electionsData
+          : [electionsData];
+
+        // ✅ Find class election
+        const classElection = elections.find(
+          e => e.election_type_id === 3 && e.status !== 'Closed'
+        );
+
         if (!classElection) {
           setError('No active class election found.');
           setLoading(false);
           return;
         }
 
+        setElection(classElection); // ✅ STORE IT
+
+        // --- Fetch candidates
         const candidatesRes = await getCandidates();
         const allCandidates = candidatesRes.data.data || [];
-        const electionCandidates = allCandidates.filter(c => c.election_id === classElection.election_id);
 
-        const { electionId, positions } = processElectionData(classElection, electionCandidates);
+        const electionCandidates = allCandidates.filter(
+          c => c.election_id === classElection.election_id
+        );
+
+        const { electionId, positions } = processElectionData(
+          classElection,
+          electionCandidates
+        );
+
         setElectionId(electionId);
         setPositions(positions);
       } catch (err) {
@@ -50,25 +73,35 @@ export default function ClassElection() {
     fetchData();
   }, []);
 
+  // --- Submit votes
   const handleSubmit = async (voteData) => {
     try {
       const votes = [];
+
       voteData.forEach(pos => {
         if (Array.isArray(pos.selected)) {
           pos.selected.forEach(candidateId => {
             const candidate = positions
               .find(p => p.id === pos.positionId)
               ?.candidates.find(c => c.id === candidateId);
+
             if (candidate) {
-              votes.push({ position_id: pos.positionId, ballot_number: candidate.ballot_number });
+              votes.push({
+                position_id: pos.positionId,
+                ballot_number: candidate.ballot_number
+              });
             }
           });
         } else if (pos.selected) {
           const candidate = positions
             .find(p => p.id === pos.positionId)
             ?.candidates.find(c => c.id === pos.selected);
+
           if (candidate) {
-            votes.push({ position_id: pos.positionId, ballot_number: candidate.ballot_number });
+            votes.push({
+              position_id: pos.positionId,
+              ballot_number: candidate.ballot_number
+            });
           }
         }
       });
@@ -82,14 +115,18 @@ export default function ClassElection() {
     }
   };
 
+  // --- Loading UI
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-        <div className="animate-pulse text-2xl text-indigo-600">Loading Class Election...</div>
+        <div className="animate-pulse text-2xl text-indigo-600">
+          Loading Class Election...
+        </div>
       </div>
     );
   }
 
+  // --- Error UI
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
@@ -100,13 +137,18 @@ export default function ClassElection() {
     );
   }
 
+  // ✅ Prevent crash if election not ready
+  if (!election) return null;
+
+  // --- Final UI
   return (
     <ElectionContainer
-      electionName="Class Election"
+      electionName={election.election_name}
       electionTagline="Choose your class officers"
       positions={positions}
       onSubmitVotes={handleSubmit}
-      endTime={new Date(Date.now() + 2 * 60 * 1000)} // 2 minutes from now
+      endTime={election.end_at}
+      serverTime={new Date().toISOString()} 
     />
   );
 }

@@ -9,6 +9,7 @@ import NationalElection from './voter/components/pages/NationalElection';
 import BarangayElection from './voter/components/pages/BarangayElection';
 import ClassElection from './voter/components/pages/ClassElection';
 import CustomElection from './voter/components/pages/CustomElection';
+import TallyPage from './voter/components/pages/TallyPage';
 
 // Admin imports
 import AdminLayout from './admin/components/AdminLayout';
@@ -25,6 +26,8 @@ function App() {
         {/* Voter routes */}
         <Route path="/signup" element={<VoterSignup />} />
         <Route path="/login" element={<VoterLogin />} />
+        <Route path="/tally" element={<TallyPage />} />
+        
         <Route path="/elections" element={<ElectionLayout />}>
           <Route index element={<WelcomePage />} />
           <Route path="national" element={<NationalElection />} />

@@ -19,7 +19,7 @@ export const registerVoter = (data) => API.post('/auth/register', data);
 export const loginVoter = (data) => API.post('/auth/login', data);
 
 // ========== ELECTIONS ==========
-export const getElections = () => API.get('/elections');
+export const getElections = () => API.get('/elections/my-election');
 
 // ========== CANDIDATES ==========
 export const getCandidates = () => API.get('/candidates');
@@ -32,3 +32,6 @@ export const setAuthToken = (token) => localStorage.setItem('token', token);
 export const getAuthToken = () => localStorage.getItem('token');
 export const removeAuthToken = () => localStorage.removeItem('token');
 export const isAuthenticated = () => !!localStorage.getItem('token');
+
+// ADD THIS AT THE BOTTOM
+export default API;

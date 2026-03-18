@@ -84,6 +84,16 @@ class ElectionsController {
 
     res.json(result);
   }
+  static async getMyActiveElection(req, res) {
+    const voter_id = req.user.id;
+
+    const election = await ElectionService.getActiveElectionForVoter(voter_id);
+
+    res.json({
+      status: "success",
+      data: election,
+    });
+  }
 }
 
 module.exports = ElectionsController;

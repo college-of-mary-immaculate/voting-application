@@ -24,7 +24,12 @@ export default function CustomElection() {
         setError('');
 
         const electionsRes = await getElections();
-        const elections = electionsRes.data.data || [];
+        const electionsData = electionsRes.data.data || [];
+
+        const elections = Array.isArray(electionsData)
+          ? electionsData
+          : [electionsData];
+
         const customElection = elections.find(e => e.election_type_id === 4 && e.status !== 'Closed');
         if (!customElection) {
           setError('No active custom election found.');
@@ -102,11 +107,12 @@ export default function CustomElection() {
 
   return (
     <ElectionContainer
-      electionName="Custom Election"
-      electionTagline="Vote for your preferred candidates"
+      electionName={election.election_name}
+      electionTagline="Choose your class officers"
       positions={positions}
       onSubmitVotes={handleSubmit}
-      endTime={new Date(Date.now() + 2 * 60 * 1000)} // 2 minutes from now
+      endTime={election.end_at}
+      serverTime={new Date().toISOString()}
     />
   );
 }

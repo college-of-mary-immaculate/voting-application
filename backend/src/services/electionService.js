@@ -1,6 +1,6 @@
 const DBService = require("./dbService");
 const PositionService = require("./positionService");
-const { formatForMySQL } = require("../utils/dateFormatter");
+const { formatForMySQL, toPHTime } = require("../utils/dateFormatter");
 const { generatePlaceholders, flattenValues } = require("../utils/dbHelper");
 
 class ElectionService {
@@ -110,18 +110,20 @@ class ElectionService {
       return { status: "success", message: "No elections found", data: [] };
     }
 
-    const now = new Date();
+    const now = toPHTime(new Date());
 
     const formattedElections = elections.map((e) => {
-      const start = new Date(e.start_at);
-      const end = new Date(e.end_at);
+      const start = toPHTime(e.start_at);
+      const end = toPHTime(e.end_at);
 
-      let timeLeft = null;
+      let timeLeft = 0;
       let isActive = false;
 
       if (now < start) {
+        // Election hasn't started
         timeLeft = Math.floor((start - now) / 1000);
       } else if (now >= start && now <= end) {
+        // Election ongoing
         isActive = true;
         timeLeft = Math.floor((end - now) / 1000);
       }
@@ -311,6 +313,21 @@ class ElectionService {
       election_id,
       results: Object.values(map),
     };
+  }
+  static async getActiveElectionForVoter(voter_id) {
+    const sql = `
+    SELECT e.*
+    FROM elections e
+    JOIN voter_elections ve 
+      ON ve.election_id = e.election_id
+    WHERE ve.voter_id = ?
+      AND e.status = 'Ongoing'
+    LIMIT 1
+  `;
+
+    const rows = await DBService.read(sql, [voter_id]);
+
+    return rows[0] || null;
   }
 }
 

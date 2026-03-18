@@ -1,5 +1,6 @@
 const VoterService = require("../services/voterService");
-const AccountService = require("../services/accountService"); // Add this import
+const AccountService = require("../services/accountService");
+const { formatForMySQL, toPHTime } = require("../utils/dateFormatter");
 
 class VoterController {
 
@@ -44,6 +45,13 @@ class VoterController {
             votes
         );
 
+        const io = req.app.get("io");
+        io.to(`election_${election_id}`).emit("voteUpdate", {
+            electionId: election_id,
+            voterId: voter_id,
+            timestamp: toPHTime(new Date())
+        });
+
         res.json(result);
     }
 
@@ -57,7 +65,7 @@ class VoterController {
 
     static async update(req, res) {
         const { full_name, email, password } = req.body;
-        const result = await VoterService.update(req.params.id, full_name, email, password);
+        const result = await VoterService.update(req.params.id, { full_name, email, password });
         res.json(result);
     }
 

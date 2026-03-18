@@ -10,6 +10,7 @@ export default function ElectionContainer({
   positions,
   onSubmitVotes,
   endTime,
+  serverTime,
 }) {
   const [votes, setVotes] = useState({});
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -138,7 +139,7 @@ export default function ElectionContainer({
               </p>
             </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full lg:w-auto">
-              {endTime && <CountdownTimer endTime={endTime} />}
+              {endTime && (<CountdownTimer endTime={endTime} serverTime={serverTime}/>)}
               <div className="bg-white/70 backdrop-blur-md rounded-3xl p-4 sm:p-5 shadow-lg border border-white/50 w-full sm:w-auto overflow-x-auto">
                 <div className="flex gap-4 sm:gap-8 min-w-max">
                   {positions.map(pos => (

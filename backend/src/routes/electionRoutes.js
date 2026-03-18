@@ -11,6 +11,6 @@ router.put('/:id', auth.authMiddleware, auth.adminOnly, asyncHandler(ElectionsCo
 router.delete('/:id', auth.authMiddleware, auth.adminOnly, asyncHandler(ElectionsController.deleteElection));
 router.post('/:id/positions', auth.authMiddleware, auth.adminOnly, asyncHandler(ElectionsController.addPosition));
 router.get('/:id/positions', auth.authMiddleware, auth.adminOnly, asyncHandler(ElectionsController.getPositions));
-router.get('/:id/results', auth.authMiddleware, auth.adminOnly, asyncHandler(ElectionsController.results));
-
+router.get('/:id/results', auth.authMiddleware, asyncHandler(ElectionsController.results));
+router.get("/my-election", auth.authMiddleware, asyncHandler(ElectionsController.getMyActiveElection));
 module.exports = router;

@@ -1,5 +1,6 @@
 require("dotenv").config();
-
+const http = require("http"); 
+const { Server } = require("socket.io");
 const express = require("express");
 const cors = require("cors");
 
@@ -11,6 +12,24 @@ const dashboardRoutes = require("./src/routes/dashboardRoutes");
 const accountRoutes = require("./src/routes/accountRoutes");
 
 const app = express();
+const server = http.createServer(app); 
+
+const io = new Server(server, {
+  cors: { origin: "*" }
+});
+
+app.set("io", io);
+
+io.on("connection", (socket) => {
+
+  socket.on("joinElection", (electionId) => {
+    socket.join(`election_${electionId}`);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("Client disconnected:", socket.id);
+  });
+});
 
 // Middleware
 app.use(cors());
@@ -24,10 +43,9 @@ app.use("/api/candidates", candidateRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/auth", accountRoutes);
 
-// Global error handler
+// Error handler
 app.use((err, req, res, next) => {
   console.error(err);
-
   res.status(err.statusCode || 500).json({
     status: "error",
     message: err.message || "Internal Server Error"
@@ -36,6 +54,6 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

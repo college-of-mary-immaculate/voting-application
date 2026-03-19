@@ -14,4 +14,6 @@ router.get("/:id", auth.authMiddleware, auth.adminOnly, asyncHandler(VoterContro
 router.put("/:id", auth.authMiddleware, auth.adminOnly, asyncHandler(VoterController.update));
 router.delete("/:id", auth.authMiddleware, auth.adminOnly, asyncHandler(VoterController.delete));
 
+
+router.get("/election/:id/voters", asyncHandler(VoterController.getNotRegistered));
 module.exports = router;

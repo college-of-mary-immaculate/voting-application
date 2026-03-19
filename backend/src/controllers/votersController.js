@@ -36,6 +36,12 @@ class VoterController {
         res.status(200).json(result);
     }
 
+    static async getNotRegistered(req, res) {
+        const election_id = req.params.id;
+        const result = await VoterService.getByNotRegistered(election_id);
+        res.status(200).json(result);
+    }
+
     static async vote(req, res) {
         const { election_id, votes } = req.body;
         const voter_id = req.user.id;

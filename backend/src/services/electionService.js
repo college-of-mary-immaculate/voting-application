@@ -1,6 +1,6 @@
 const DBService = require("./dbService");
 const PositionService = require("./positionService");
-const { formatForMySQL, toPHTime } = require("../utils/dateFormatter");
+const { formatForMySQL, getServerTimePH } = require("../utils/dateFormatter");
 const { generatePlaceholders, flattenValues } = require("../utils/dbHelper");
 
 class ElectionService {
@@ -9,11 +9,25 @@ class ElectionService {
       throw new Error("All fields are required: type, name, start_at, end_at");
     }
 
-    const startDate = formatForMySQL(start_at);
-    const endDate = formatForMySQL(end_at);
+    // Validate input format from frontend (datetime-local)
+    if (
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(start_at) ||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(end_at)
+    ) {
+      throw new Error("Invalid datetime format. Expected YYYY-MM-DDTHH:mm");
+    }
 
-    if (new Date(startDate) >= new Date(endDate)) {
-      throw new Error("`start_at` must be earlier than `end_at`");
+    // Convert to MySQL DATETIME format (YYYY-MM-DD HH:mm:ss)
+    const startMysql = start_at.replace("T", " ") + ":00";
+    const endMysql = end_at.replace("T", " ") + ":00";
+
+    // Parse dates as PH time for validation
+    const startDate = this.parsePHDate(startMysql);
+    const endDate = this.parsePHDate(endMysql);
+    const now = new Date();
+
+    if (startDate >= endDate) {
+      throw new Error("start_at must be earlier than end_at");
     }
 
     const existing = await DBService.read(
@@ -27,13 +41,9 @@ class ElectionService {
       );
     }
 
-    const now = new Date();
     let status = "Upcoming";
-    const startTime = new Date(startDate);
-    const endTime = new Date(endDate);
-
-    if (now >= startTime && now <= endTime) status = "Ongoing";
-    else if (now > endTime) status = "Closed";
+    if (now >= startDate && now <= endDate) status = "Ongoing";
+    else if (now > endDate) status = "Closed";
 
     const sql = `
       INSERT INTO elections
@@ -43,8 +53,8 @@ class ElectionService {
     const result = await DBService.write(sql, [
       election_type_id,
       election_name,
-      startDate,
-      endDate,
+      startMysql,
+      endMysql,
       status,
     ]);
 
@@ -72,6 +82,7 @@ class ElectionService {
     const [created] = await DBService.read(
       `SELECT 
          e.election_id,
+         e.election_type_id,
          e.election_name,
          e.start_at,
          e.end_at,
@@ -90,8 +101,117 @@ class ElectionService {
     };
   }
 
+  static async update(
+    election_id,
+    election_type_id,
+    election_name,
+    start_at,
+    end_at,
+  ) {
+    if (!election_id) {
+      throw new Error("election_id is required");
+    }
+
+    if (!election_type_id || !election_name || !start_at || !end_at) {
+      throw new Error(
+        "All fields are required: election_type_id, election_name, start_at, end_at",
+      );
+    }
+
+    if (
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(start_at) ||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(end_at)
+    ) {
+      throw new Error("Invalid datetime format. Expected YYYY-MM-DDTHH:mm");
+    }
+
+    const startMysql = start_at.replace("T", " ") + ":00";
+    const endMysql = end_at.replace("T", " ") + ":00";
+
+    // Parse dates as PH time for validation
+    const startDate = this.parsePHDate(startMysql);
+    const endDate = this.parsePHDate(endMysql);
+
+    if (startDate >= endDate) {
+      throw new Error("start_at must be earlier than end_at");
+    }
+
+    const exists = await DBService.read(
+      `SELECT election_id FROM elections WHERE election_id = ?`,
+      [election_id],
+    );
+
+    if (exists.length === 0) {
+      throw new Error(`Election with ID ${election_id} not found`);
+    }
+
+    const duplicate = await DBService.read(
+      `SELECT election_id FROM elections 
+       WHERE election_type_id = ? AND election_name = ? AND election_id != ?`,
+      [election_type_id, election_name, election_id],
+    );
+
+    if (duplicate.length > 0) {
+      throw new Error(
+        "Another election with this name already exists for the selected type.",
+      );
+    }
+
+    const now = new Date();
+    let status = "Upcoming";
+    if (now >= startDate && now <= endDate) {
+      status = "Ongoing";
+    } else if (now > endDate) {
+      status = "Closed";
+    }
+
+    const sql = `
+      UPDATE elections
+      SET
+        election_type_id = ?,
+        election_name    = ?,
+        start_at         = ?,
+        end_at           = ?,
+        status           = ?
+      WHERE election_id = ?
+    `;
+
+    await DBService.write(sql, [
+      election_type_id,
+      election_name,
+      startMysql,
+      endMysql,
+      status,
+      election_id,
+    ]);
+
+    return {
+      status: "success",
+      message: "Election updated successfully",
+      data: {
+        election_id,
+        election_type_id,
+        election_name,
+        start_at: startMysql,
+        end_at: endMysql,
+        status,
+      },
+    };
+  }
+
+  static parsePHDate(mysqlDateTime) {
+    if (!mysqlDateTime) return null;
+    // mysqlDateTime format: "2026-03-19 23:10:00"
+    const [datePart, timePart] = mysqlDateTime.split(" ");
+    const [year, month, day] = datePart.split("-").map(Number);
+    const [hour, minute, second] = timePart.split(":").map(Number);
+
+    // Create date in PH timezone (UTC+8) by using UTC constructor with offset
+    // PH is UTC+8, so we subtract 8 hours to get correct UTC timestamp
+    return new Date(Date.UTC(year, month - 1, day, hour - 8, minute, second));
+  }
+
   static async getAll() {
-    // ito nadagdag – added election_type_id to the SELECT list
     const elections = await DBService.read(
       `SELECT 
          e.election_id,
@@ -110,20 +230,47 @@ class ElectionService {
       return { status: "success", message: "No elections found", data: [] };
     }
 
-    const now = toPHTime(new Date());
+    const now = new Date(); // Current UTC time
 
     const formattedElections = elections.map((e) => {
-      const start = toPHTime(e.start_at);
-      const end = toPHTime(e.end_at);
+      // Handle if start_at/end_at are already Date objects
+      let startStr, endStr;
+
+      if (e.start_at instanceof Date) {
+        // Convert Date object to MySQL string format YYYY-MM-DD HH:mm:ss
+        const start = e.start_at;
+        const year = start.getFullYear();
+        const month = String(start.getMonth() + 1).padStart(2, "0");
+        const day = String(start.getDate()).padStart(2, "0");
+        const hour = String(start.getHours()).padStart(2, "0");
+        const minute = String(start.getMinutes()).padStart(2, "0");
+        const second = String(start.getSeconds()).padStart(2, "0");
+        startStr = `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+
+        const end = e.end_at instanceof Date ? e.end_at : new Date(e.end_at);
+        const endYear = end.getFullYear();
+        const endMonth = String(end.getMonth() + 1).padStart(2, "0");
+        const endDay = String(end.getDate()).padStart(2, "0");
+        const endHour = String(end.getHours()).padStart(2, "0");
+        const endMinute = String(end.getMinutes()).padStart(2, "0");
+        const endSecond = String(end.getSeconds()).padStart(2, "0");
+        endStr = `${endYear}-${endMonth}-${endDay} ${endHour}:${endMinute}:${endSecond}`;
+      } else {
+        // Already strings
+        startStr = e.start_at;
+        endStr = e.end_at;
+      }
+
+      // Parse dates as PH time for correct comparison
+      const start = this.parsePHDate(startStr);
+      const end = this.parsePHDate(endStr);
 
       let timeLeft = 0;
       let isActive = false;
 
       if (now < start) {
-        // Election hasn't started
         timeLeft = Math.floor((start - now) / 1000);
       } else if (now >= start && now <= end) {
-        // Election ongoing
         isActive = true;
         timeLeft = Math.floor((end - now) / 1000);
       }
@@ -131,10 +278,14 @@ class ElectionService {
       const status = now > end ? "Closed" : isActive ? "Ongoing" : e.status;
 
       return {
-        ...e,
-        start_at: formatForMySQL(e.start_at),
-        end_at: formatForMySQL(e.end_at),
-        server_time: formatForMySQL(now),
+        election_id: e.election_id,
+        election_type_id: e.election_type_id,
+        election_name: e.election_name,
+        type_name: e.type_name,
+        // Return as string, not Date object
+        start_at: startStr,
+        end_at: endStr,
+        server_time: getServerTimePH(),
         is_active: isActive,
         seconds_until_start: now < start ? timeLeft : 0,
         seconds_left: isActive ? timeLeft : 0,
@@ -145,112 +296,39 @@ class ElectionService {
     return { status: "success", data: formattedElections };
   }
 
-  //update
-  static async update(
-    election_id,
-    election_type_id,
-    election_name,
-    start_at,
-    end_at,
-  ) {
-    if (!election_id) {
-      throw new Error("election_id is required");
-    }
+  //delete
+  static async delete(election_id) {
+    if (!election_id) throw new Error("Election ID is required");
 
-    if (!election_type_id || !election_name || !start_at || !end_at) {
-      throw new Error(
-        "All fields are required: election_type_id, election_name, start_at, end_at",
-      );
-    }
-
-    const startDate = formatForMySQL(start_at);
-    const endDate = formatForMySQL(end_at);
-
-    if (new Date(startDate) >= new Date(endDate)) {
-      throw new Error("start_at must be earlier than end_at");
-    }
-
-    // check if election exists
     const exists = await DBService.read(
       `SELECT election_id FROM elections WHERE election_id = ?`,
       [election_id],
     );
+    if (exists.length === 0) throw new Error("Election not found");
 
-    if (exists.length === 0) {
-      throw new Error(`Election with ID ${election_id} not found`);
-    }
-
-    // prevent name conflict
-    const duplicate = await DBService.read(
-      `SELECT election_id FROM elections 
-       WHERE election_type_id = ? AND election_name = ? AND election_id != ?`,
-      [election_type_id, election_name, election_id],
+    // Delete votes for candidates in this election
+    await DBService.write(
+      `DELETE v FROM votes v
+     JOIN candidates c ON v.candidate_id = c.candidate_id
+     JOIN positions p ON c.position_id = p.position_id
+     WHERE p.election_id = ?`,
+      [election_id],
     );
 
-    if (duplicate.length > 0) {
-      throw new Error(
-        "Another election with this name already exists for the selected type.",
-      );
-    }
+    // Delete candidates
+    await DBService.write(
+      `DELETE c FROM candidates c
+     JOIN positions p ON c.position_id = p.position_id
+     WHERE p.election_id = ?`,
+      [election_id],
+    );
 
-    // compute new status
-    const now = new Date();
-    let status = "Upcoming";
-    if (now >= new Date(startDate) && now <= new Date(endDate)) {
-      status = "Ongoing";
-    } else if (now > new Date(endDate)) {
-      status = "Closed";
-    }
-
-    const sql = `
-      UPDATE elections
-      SET
-        election_type_id = ?,
-        election_name    = ?,
-        start_at         = ?,
-        end_at           = ?,
-        status           = ?
-      WHERE election_id = ?
-    `;
-
-    await DBService.write(sql, [
-      election_type_id,
-      election_name,
-      startDate,
-      endDate,
-      status,
+    // Delete positions
+    await DBService.write(`DELETE FROM positions WHERE election_id = ?`, [
       election_id,
     ]);
 
-    return {
-      status: "success",
-      message: "Election updated successfully",
-      data: {
-        election_id,
-        election_type_id,
-        election_name,
-        start_at: startDate,
-        end_at: endDate,
-        status,
-      },
-    };
-  }
-
-  //delete
-  static async delete(election_id) {
-    if (!election_id) {
-      throw new Error("Election ID is required");
-    }
-
-    const exists = await DBService.read(
-      `SELECT election_id FROM elections WHERE election_id = ?`,
-      [election_id],
-    );
-
-    if (exists.length === 0) {
-      throw new Error("Election not found");
-    }
-
+    // Finally, delete the election
     await DBService.write(`DELETE FROM elections WHERE election_id = ?`, [
       election_id,
     ]);
@@ -268,6 +346,7 @@ class ElectionService {
   static async getPositions(election_id) {
     return PositionService.getByElection(election_id);
   }
+
   static async getResults(election_id) {
     const sql = `
       SELECT
@@ -314,6 +393,7 @@ class ElectionService {
       results: Object.values(map),
     };
   }
+
   static async getActiveElectionForVoter(voter_id) {
     const sql = `
     SELECT e.*
@@ -327,7 +407,54 @@ class ElectionService {
 
     const rows = await DBService.read(sql, [voter_id]);
 
-    return rows[0] || null;
+    if (!rows || rows.length === 0) {
+      return null;
+    }
+
+    const election = rows[0];
+
+    // Parse dates for comparison
+    let startStr, endStr;
+
+    if (election.start_at instanceof Date) {
+      const start = election.start_at;
+      startStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")} ${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}:${String(start.getSeconds()).padStart(2, "0")}`;
+
+      const end =
+        election.end_at instanceof Date
+          ? election.end_at
+          : new Date(election.end_at);
+      endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")} ${String(end.getHours()).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}:${String(end.getSeconds()).padStart(2, "0")}`;
+    } else {
+      startStr = election.start_at;
+      endStr = election.end_at;
+    }
+
+    // Parse dates as PH time
+    const start = this.parsePHDate(startStr);
+    const end = this.parsePHDate(endStr);
+    const now = new Date();
+
+    let timeLeft = 0;
+    let isActive = false;
+
+    if (now >= start && now <= end) {
+      isActive = true;
+      timeLeft = Math.floor((end - now) / 1000);
+    }
+
+    return {
+      election_id: election.election_id,
+      election_type_id: election.election_type_id,
+      election_name: election.election_name,
+      start_at: startStr,
+      end_at: endStr,
+      status: election.status,
+      created_at: election.created_at,
+      server_time: getServerTimePH(),
+      is_active: isActive,
+      seconds_left: isActive ? timeLeft : 0,
+    };
   }
 }
 

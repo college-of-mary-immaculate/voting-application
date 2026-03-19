@@ -152,3 +152,11 @@ DROP INDEX unique_vote_per_voter_per_election;
 -- 2. Add a new UNIQUE constraint per candidate per election
 ALTER TABLE votes
 ADD UNIQUE KEY unique_vote_per_voter_candidate_election (voter_id, candidate_id, election_id);
+
+ALTER TABLE votes
+DROP FOREIGN KEY fk_votes_candidate;
+
+ALTER TABLE votes
+ADD CONSTRAINT fk_votes_candidate
+FOREIGN KEY (candidate_id) REFERENCES candidates(candidate_id)
+ON DELETE CASCADE;

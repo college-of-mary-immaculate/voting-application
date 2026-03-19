@@ -88,7 +88,7 @@ class ElectionsController {
     const voter_id = req.user.id;
 
     const election = await ElectionService.getActiveElectionForVoter(voter_id);
-
+    
     res.json({
       status: "success",
       data: election,

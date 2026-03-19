@@ -8,6 +8,7 @@ export default function NationalElection() {
   const navigate = useNavigate();
   const [positions, setPositions] = useState([]);
   const [electionId, setElectionId] = useState(null);
+  const [election, setElection] = useState(null); // ✅ ADDED
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -36,6 +37,8 @@ export default function NationalElection() {
           setLoading(false);
           return;
         }
+
+        setElection(nationalElection); // ✅ STORE IT
 
         const candidatesRes = await getCandidates();
         const allCandidates = candidatesRes.data.data || [];
@@ -105,10 +108,13 @@ export default function NationalElection() {
     );
   }
 
+  // ✅ Prevent crash if election not ready
+  if (!election) return null;
+
   return (
     <ElectionContainer
       electionName={election.election_name}
-      electionTagline="Choose your candidates"
+      electionTagline="Shape the future of our nation"
       positions={positions}
       onSubmitVotes={handleSubmit}
       endTime={election.end_at}

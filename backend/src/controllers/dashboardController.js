@@ -29,7 +29,7 @@ class DashboardController {
 
       // Voters who have voted
       const votedCount = await DBService.read(
-        'SELECT COUNT(*) as count FROM voters WHERE has_voted = 1',
+        'SELECT COUNT(*) as count FROM voters',
         []
       );
 

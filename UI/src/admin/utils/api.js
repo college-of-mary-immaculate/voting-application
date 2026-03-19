@@ -65,6 +65,31 @@ const API = {
     const response = await this.request(endpoint, { method: "DELETE" });
     return response.json();
   },
+  async upload(endpoint, formData) {
+    const token = localStorage.getItem('token');
+    
+    try {
+      const response = await fetch(`http://localhost:3000/api${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+          // Don't set Content-Type for FormData
+        },
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || `Upload failed with status ${response.status}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error(`Upload Error (${endpoint}):`, error);
+      throw error;
+    }
+  }
 };
 
 export default API;

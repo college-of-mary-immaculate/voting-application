@@ -10,7 +10,10 @@ import BarangayElection from './voter/components/pages/BarangayElection';
 import ClassElection from './voter/components/pages/ClassElection';
 import CustomElection from './voter/components/pages/CustomElection';
 import TallyPage from './voter/components/pages/TallyPage';
-
+import ElectionPage from './voter/components/pages/ElectionPage';
+import ElectionTally from './voter/components/pages/ElectionTally';
+import VoterDashboard from './voter/components/pages/VoterDashboard';
+import VoterLayout from './voter/components/layout/VoterLayout';
 // Admin imports
 import AdminLayout from './admin/components/AdminLayout';
 import Dashboard from './admin/pages/Dashboard/Dashboard';
@@ -18,7 +21,6 @@ import Users from './admin/pages/Users/Users';
 import Elections from './admin/pages/Elections/Election';
 import Candidates from './admin/pages/Candidates/Candidates';
 import Admins from './admin/pages/Admins/Admins';
-
 function App() {
   return (
     <BrowserRouter>
@@ -26,8 +28,15 @@ function App() {
         {/* Voter routes */}
         <Route path="/signup" element={<VoterSignup />} />
         <Route path="/login" element={<VoterLogin />} />
-        <Route path="/tally" element={<TallyPage />} />
         
+        <Route path="/tally" element={<TallyPage />} />
+        <Route path="/" element={<VoterLayout />}>
+          <Route path="voter-dashboard" element={<VoterDashboard />} />
+          <Route path="election/:electionId/vote" element={<ElectionPage />} />
+          <Route path="election/:electionId/tally" element={<ElectionTally />} />
+          <Route index element={<VoterDashboard />} />
+        </Route>
+
         <Route path="/elections" element={<ElectionLayout />}>
           <Route index element={<WelcomePage />} />
           <Route path="national" element={<NationalElection />} />
@@ -46,7 +55,6 @@ function App() {
         </Route>
 
         {/* Default redirect */}
-        <Route path="/" element={<Navigate to="/signup" />} />
       </Routes>
     </BrowserRouter>
   );

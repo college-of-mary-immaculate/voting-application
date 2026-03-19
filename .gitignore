@@ -30,3 +30,4 @@ yarn-error.log*
 #backend
 /backend/.env
 /backend/node_modules/
+/backend/public/

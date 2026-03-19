@@ -194,8 +194,8 @@ class VoterService {
     if (election.length === 0)
       throw new Error("This election is not currently active");
 
-    // 4️⃣ Already voted? ✅ Use master to avoid replication lag
-    const alreadyVoted = await DBService.write(
+    // 4️⃣ Already voted? ✅ FIXED: Use read, not write
+    const alreadyVoted = await DBService.read(  // Changed from write to read
       `SELECT 1 FROM votes WHERE voter_id = ? AND election_id = ? LIMIT 1`,
       [voter_id, election_id],
     );
@@ -271,6 +271,14 @@ class VoterService {
           `INSERT INTO votes (voter_id, candidate_id, election_id) VALUES ${placeholders}`,
           values,
         );
+        
+        // ✅ Return something to indicate success
+        return { 
+          success: true, 
+          message: "Votes cast successfully",
+          votes_cast: uniqueCandidateIds.length 
+        };
+        
       } catch (err) {
         if (err.code === "ER_DUP_ENTRY") {
           throw new Error(
@@ -280,6 +288,9 @@ class VoterService {
         throw err;
       }
     }
+    
+    // Return something if no votes (shouldn't happen)
+    return { success: true, message: "No votes to cast" };
   }
 }
 

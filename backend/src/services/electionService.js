@@ -394,67 +394,87 @@ class ElectionService {
     };
   }
 
-  static async getActiveElectionForVoter(voter_id) {
+  static async getElectionsForVoter(voter_id) {
     const sql = `
-    SELECT e.*
+    SELECT DISTINCT 
+      e.election_id,
+      e.election_type_id,
+      e.election_name,
+      e.start_at,
+      e.end_at,
+      e.status,
+      e.created_at,
+      NOW() as server_time,
+      CASE 
+        WHEN e.start_at <= NOW() AND e.end_at >= NOW() THEN true 
+        ELSE false 
+      END as is_active,
+      TIMESTAMPDIFF(SECOND, NOW(), e.end_at) as seconds_left,
+      CASE 
+        WHEN v.vote_id IS NOT NULL THEN true 
+        ELSE false 
+      END as has_voted
     FROM elections e
-    JOIN voter_elections ve 
-      ON ve.election_id = e.election_id
+    JOIN voter_elections ve ON e.election_id = ve.election_id
+    LEFT JOIN votes v ON e.election_id = v.election_id AND v.voter_id = ?
     WHERE ve.voter_id = ?
-      AND e.status = 'Ongoing'
-    LIMIT 1
+    ORDER BY e.start_at DESC
   `;
 
-    const rows = await DBService.read(sql, [voter_id]);
+    // Pass voter_id twice - once for each placeholder
+    const rows = await DBService.read(sql, [voter_id, voter_id]);
 
     if (!rows || rows.length === 0) {
-      return null;
+      return [];
     }
 
-    const election = rows[0];
+    const elections = rows.map(election => {
+      // Parse dates for comparison
+      let startStr, endStr;
 
-    // Parse dates for comparison
-    let startStr, endStr;
+      if (election.start_at instanceof Date) {
+        const start = election.start_at;
+        startStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")} ${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}:${String(start.getSeconds()).padStart(2, "0")}`;
 
-    if (election.start_at instanceof Date) {
-      const start = election.start_at;
-      startStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")} ${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}:${String(start.getSeconds()).padStart(2, "0")}`;
+        const end =
+          election.end_at instanceof Date
+            ? election.end_at
+            : new Date(election.end_at);
+        endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")} ${String(end.getHours()).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}:${String(end.getSeconds()).padStart(2, "0")}`;
+      } else {
+        startStr = election.start_at;
+        endStr = election.end_at;
+      }
 
-      const end =
-        election.end_at instanceof Date
-          ? election.end_at
-          : new Date(election.end_at);
-      endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")} ${String(end.getHours()).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}:${String(end.getSeconds()).padStart(2, "0")}`;
-    } else {
-      startStr = election.start_at;
-      endStr = election.end_at;
-    }
+      // Parse dates as PH time
+      const start = this.parsePHDate(startStr);
+      const end = this.parsePHDate(endStr);
+      const now = new Date();
 
-    // Parse dates as PH time
-    const start = this.parsePHDate(startStr);
-    const end = this.parsePHDate(endStr);
-    const now = new Date();
+      let timeLeft = 0;
+      let isActive = false;
 
-    let timeLeft = 0;
-    let isActive = false;
+      if (now >= start && now <= end) {
+        isActive = true;
+        timeLeft = Math.floor((end - now) / 1000);
+      }
 
-    if (now >= start && now <= end) {
-      isActive = true;
-      timeLeft = Math.floor((end - now) / 1000);
-    }
+      return {
+        election_id: election.election_id,
+        election_type_id: election.election_type_id,
+        election_name: election.election_name,
+        start_at: startStr,
+        end_at: endStr,
+        status: election.status,
+        created_at: election.created_at,
+        server_time: getServerTimePH(),
+        is_active: isActive,
+        seconds_left: isActive ? timeLeft : 0,
+        has_voted: election.has_voted === 1 || election.has_voted === true
+      };
+    });
 
-    return {
-      election_id: election.election_id,
-      election_type_id: election.election_type_id,
-      election_name: election.election_name,
-      start_at: startStr,
-      end_at: endStr,
-      status: election.status,
-      created_at: election.created_at,
-      server_time: getServerTimePH(),
-      is_active: isActive,
-      seconds_left: isActive ? timeLeft : 0,
-    };
+    return elections;
   }
 }
 

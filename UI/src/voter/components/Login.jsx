@@ -56,7 +56,7 @@ export default function Login() {
           window.location.href = `/admin?token=${tokenEncoded}&user=${userEncoded}`;
         } else {
           // Voter: go to elections page
-          navigate('/elections');
+          navigate('/voter-dashboard');
         }
       } else {
         setApiError(result.message || 'Login failed');

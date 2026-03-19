@@ -9,14 +9,39 @@ export default function CountdownTimer({ endTime, serverTime }) {
   function calculateTimeLeft() {
     if (!endTime || !serverTime) return {};
 
-    const end = new Date(endTime);          // backend UTC
-    const clientNow = Date.now();           // current browser time
-    const serverNow = new Date(serverTime).getTime();
+    // endTime from backend: "2026-03-20 23:11:00" (MySQL format - already PH time)
+    // Convert MySQL format to something JS can parse
+    let end;
+    if (endTime.includes(' ')) {
+      // MySQL format: "2026-03-20 23:11:00"
+      const [datePart, timePart] = endTime.split(' ');
+      const [year, month, day] = datePart.split('-');
+      const [hour, minute, second] = timePart.split(':');
+      // Create date in PH timezone by using UTC constructor with offset
+      // PH is UTC+8, so we subtract 8 hours to get correct UTC timestamp
+      end = new Date(Date.UTC(year, month - 1, day, hour - 8, minute, second));
+    } else {
+      // ISO format fallback
+      end = new Date(endTime);
+    }
 
-    // Adjusted current time
+    const clientNow = Date.now(); // current browser time (UTC)
+    
+    // serverTime from backend: "2026-03-19 23:46:29" (MySQL format - already PH time)
+    let serverNow;
+    if (serverTime.includes(' ')) {
+      const [datePart, timePart] = serverTime.split(' ');
+      const [year, month, day] = datePart.split('-');
+      const [hour, minute, second] = timePart.split(':');
+      serverNow = Date.UTC(year, month - 1, day, hour - 8, minute, second);
+    } else {
+      serverNow = new Date(serverTime).getTime();
+    }
+
+    // Adjusted current time using server offset
     const adjustedNow = clientNow - offsetRef.current;
 
-    const difference = end - adjustedNow;
+    const difference = end.getTime() - adjustedNow;
 
     if (difference <= 0) return { expired: true };
 
@@ -33,7 +58,18 @@ export default function CountdownTimer({ endTime, serverTime }) {
 
     // Compute offset once on mount
     const clientNow = Date.now();
-    const serverNow = new Date(serverTime).getTime();
+    
+    // Parse server time (which is in PH time)
+    let serverNow;
+    if (serverTime.includes(' ')) {
+      const [datePart, timePart] = serverTime.split(' ');
+      const [year, month, day] = datePart.split('-');
+      const [hour, minute, second] = timePart.split(':');
+      serverNow = Date.UTC(year, month - 1, day, hour - 8, minute, second);
+    } else {
+      serverNow = new Date(serverTime).getTime();
+    }
+    
     offsetRef.current = clientNow - serverNow;
 
     setTimeLeft(calculateTimeLeft()); // initialize
@@ -47,6 +83,11 @@ export default function CountdownTimer({ endTime, serverTime }) {
 
   if (timeLeft.expired) {
     return <div className="text-red-500 font-bold">⏳ Election Ended</div>;
+  }
+
+  // If no time left object yet
+  if (Object.keys(timeLeft).length === 0) {
+    return <div className="text-gray-500">Loading timer...</div>;
   }
 
   return (

@@ -84,16 +84,40 @@ class ElectionsController {
 
     res.json(result);
   }
-  static async getMyActiveElection(req, res) {
-    const voter_id = req.user.id;
 
-    const election = await ElectionService.getActiveElectionForVoter(voter_id);
+  static async getMyActiveElection(req, res) {
+  try {
+    const voter_id = req.user?.voter_id || req.user?.id;
     
-    res.json({
+    if (!voter_id) {
+      return res.status(400).json({ 
+        status: "error", 
+        message: "Voter ID not found" 
+      });
+    }
+
+    const election = await ElectionService.getElectionsForVoter(voter_id);
+    
+    if (!election) {
+      return res.status(404).json({ 
+        status: "success", 
+        message: "No active election found",
+        data: null 
+      });
+    }
+
+    return res.json({
       status: "success",
-      data: election,
+      data: election
+    });
+  } catch (error) {
+    console.error("Error in getMyActiveElection:", error);
+    return res.status(500).json({ 
+      status: "error", 
+      message: error.message 
     });
   }
+}
 }
 
 module.exports = ElectionsController;

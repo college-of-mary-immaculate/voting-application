@@ -1,6 +1,6 @@
 const VoterService = require("../services/voterService");
 const AccountService = require("../services/accountService");
-const { formatForMySQL, toPHTime } = require("../utils/dateFormatter");
+const { formatForMySQL, getServerTimePH } = require("../utils/dateFormatter");
 
 class VoterController {
 
@@ -55,7 +55,7 @@ class VoterController {
         io.to(`election_${election_id}`).emit("voteUpdate", {
             electionId: election_id,
             voterId: voter_id,
-            timestamp: toPHTime(new Date())
+            timestamp: getServerTimePH()
         });
 
         res.json(result);

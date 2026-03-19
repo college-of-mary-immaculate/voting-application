@@ -1,4 +1,6 @@
+// src/controllers/candidatesController.js
 const CandidatesService = require("../services/candidatesService");
+const DBService = require("../services/dbService"); // Add this import
 
 class CandidatesController {
   static async create(req, res) {
@@ -32,7 +34,65 @@ class CandidatesController {
     }
   }
 
-    static async update(req, res) {
+  // ADD THIS NEW METHOD
+  static async getByPosition(req, res) {
+    try {
+      const position_id = parseInt(req.params.positionId);
+      
+      if (isNaN(position_id)) {
+        return res.status(400).json({ 
+          error: "Invalid position ID" 
+        });
+      }
+
+      // First check if position exists
+      const positionExists = await DBService.read(
+        `SELECT position_id, position_name FROM positions WHERE position_id = ?`,
+        [position_id]
+      );
+
+      if (positionExists.length === 0) {
+        return res.status(404).json({ 
+          error: "Position not found" 
+        });
+      }
+
+      // Get candidates for this position
+      const sql = `
+        SELECT 
+          candidate_id,
+          position_id,
+          ballot_number,
+          full_name,
+          party_name,
+          photo_url,
+          status,
+          created_at
+        FROM candidates 
+        WHERE position_id = ? 
+        ORDER BY ballot_number ASC
+      `;
+      
+      const candidates = await DBService.read(sql, [position_id]);
+
+      res.status(200).json({
+        status: "success",
+        count: candidates.length,
+        data: candidates,
+        position: {
+          id: positionExists[0].position_id,
+          name: positionExists[0].position_name
+        }
+      });
+    } catch (error) {
+      console.error("Error in getByPosition:", error);
+      res.status(500).json({ 
+        error: error.message 
+      });
+    }
+  }
+
+  static async update(req, res) {
     try {
       const { id } = req.params;
       const { position_id, full_name, party_name, photo_url, status } = req.body;

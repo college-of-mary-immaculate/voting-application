@@ -19,13 +19,25 @@ export const registerVoter = (data) => API.post('/auth/register', data);
 export const loginVoter = (data) => API.post('/auth/login', data);
 
 // ========== ELECTIONS ==========
-export const getElections = () => API.get('/elections/my-election');
+export const getElections = () => API.get('/elections/my-elections');
 
 // ========== CANDIDATES ==========
 export const getCandidates = () => API.get('/candidates');
 
 // ========== VOTING ==========
 export const castVote = (data) => API.post('/voters/vote', data);
+
+// RESULTS
+export const getElectionResults = async (electionId) => {
+  try {
+    const response = await API.get(`/elections/${electionId}/results`);
+    console.log('Results API response:', response);
+    return response;
+  } catch (error) {
+    console.error('Get results error:', error.response?.data || error.message);
+    throw error;
+  }
+};
 
 // ========== TOKEN MANAGEMENT ==========
 export const setAuthToken = (token) => localStorage.setItem('token', token);

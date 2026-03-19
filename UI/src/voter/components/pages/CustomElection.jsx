@@ -8,6 +8,7 @@ export default function CustomElection() {
   const navigate = useNavigate();
   const [positions, setPositions] = useState([]);
   const [electionId, setElectionId] = useState(null);
+  const [election, setElection] = useState(null); // ✅ ADDED
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -36,6 +37,8 @@ export default function CustomElection() {
           setLoading(false);
           return;
         }
+
+        setElection(customElection); // ✅ STORE IT
 
         const candidatesRes = await getCandidates();
         const allCandidates = candidatesRes.data.data || [];
@@ -105,10 +108,13 @@ export default function CustomElection() {
     );
   }
 
+  // ✅ Prevent crash if election not ready
+  if (!election) return null;
+
   return (
     <ElectionContainer
       electionName={election.election_name}
-      electionTagline="Choose your class officers"
+      electionTagline="Cast your votes for this election"
       positions={positions}
       onSubmitVotes={handleSubmit}
       endTime={election.end_at}

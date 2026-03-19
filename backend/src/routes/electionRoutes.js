@@ -8,7 +8,7 @@ const auth = require("../middleware/authMiddleware");
 router.get('/', auth.authMiddleware, asyncHandler(ElectionsController.getElections));
 router.post('/', auth.authMiddleware, auth.adminOnly, asyncHandler(ElectionsController.createElection));
 router.put('/:id', auth.authMiddleware, auth.adminOnly, asyncHandler(ElectionsController.updateElection)); 
-router.delete('/:id', auth.authMiddleware, auth.adminOnly, asyncHandler(ElectionsController.deleteElection));
+router.delete('/:id', asyncHandler(ElectionsController.deleteElection));
 router.post('/:id/positions', auth.authMiddleware, auth.adminOnly, asyncHandler(ElectionsController.addPosition));
 router.get('/:id/positions', auth.authMiddleware, auth.adminOnly, asyncHandler(ElectionsController.getPositions));
 router.get('/:id/results', auth.authMiddleware, asyncHandler(ElectionsController.results));

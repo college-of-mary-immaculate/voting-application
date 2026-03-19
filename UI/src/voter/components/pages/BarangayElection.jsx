@@ -13,6 +13,7 @@ export default function BarangayElection() {
   const navigate = useNavigate();
   const [positions, setPositions] = useState([]);
   const [electionId, setElectionId] = useState(null);
+  const [election, setElection] = useState(null); // ✅ ADDED
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -29,32 +30,37 @@ export default function BarangayElection() {
         setError("");
 
         const electionsRes = await getElections();
-        const electionsData = electionsRes.data.data;
+        const electionsData = electionsRes.data.data || [];
 
-        // normalize to array
-        const elections = Array.isArray(electionsData)
-          ? electionsData
-          : [electionsData];
+        const elections = (
+          Array.isArray(electionsData) ? electionsData : [electionsData]
+        ).filter(Boolean);
 
         const barangayElection = elections.find(
-          (e) => e.election_type_id === 2 && e.status !== "Closed",
+          (e) => e.election_type_id === 2 && e.status !== "Closed"
         );
+
         if (!barangayElection) {
           setError("No active barangay election found.");
           setLoading(false);
           return;
         }
 
+        setElection(barangayElection); // ✅ STORE IT
+
+        // --- Fetch candidates
         const candidatesRes = await getCandidates();
         const allCandidates = candidatesRes.data.data || [];
+
         const electionCandidates = allCandidates.filter(
-          (c) => c.election_id === barangayElection.election_id,
+          c => c.election_id === barangayElection.election_id
         );
 
         const { electionId, positions } = processElectionData(
           barangayElection,
-          electionCandidates,
+          electionCandidates
         );
+
         setElectionId(electionId);
         setPositions(positions);
       } catch (err) {
@@ -126,10 +132,13 @@ export default function BarangayElection() {
     );
   }
 
+  // ✅ Prevent crash if election not ready
+  if (!election) return null;
+
   return (
     <ElectionContainer
       electionName={election.election_name}
-      electionTagline="Choose your barangay officers"
+      electionTagline="Choose your barangay officials"
       positions={positions}
       onSubmitVotes={handleSubmit}
       endTime={election.end_at}

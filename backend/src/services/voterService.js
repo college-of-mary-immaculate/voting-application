@@ -38,6 +38,38 @@ class VoterService {
     };
   }
 
+  static async getByNotRegistered(election_id) {
+  if (!election_id) throw new Error('Election ID is missing.');
+
+  const sql = `
+    SELECT 
+      v.voter_id,
+      v.full_name
+    FROM voters v
+    WHERE NOT EXISTS (
+      SELECT *
+      FROM voter_elections ve
+      WHERE ve.election_id = ?
+        AND ve.voter_id = v.voter_id
+    );
+  `;
+
+  const rows = await DBService.read(sql, [election_id]);
+
+  if (!rows || rows.length === 0) {
+    return {
+      status: "success",
+      count: 0,
+      data: [],
+    };
+  }
+
+  return {
+    status: "success",
+    count: rows.length,
+    data: rows,
+  };
+}
   static async getById(voter_id) {
     const rows = await DBService.read(
       `SELECT voter_id, full_name, email, created_at

@@ -133,6 +133,7 @@ export default function BarangayElection() {
       electionTagline="Choose your barangay officials"
       positions={positions}
       onSubmitVotes={handleSubmit}
+      startTime={election.start_at}
       endTime={election.end_at}
       serverTime={new Date().toISOString()}
       electionTypeId={election.election_type_id} 

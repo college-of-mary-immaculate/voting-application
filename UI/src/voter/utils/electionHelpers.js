@@ -1,9 +1,9 @@
 /**
  * Groups candidates by position and returns an array suitable for ElectionContainer.
- * Also returns election_id and endTime from the election object.
+ * Also returns election_id, startTime, and endTime from the election object.
  */
 export const processElectionData = (election, candidates) => {
-  if (!election || !candidates) return { electionId: null, endTime: null, positions: [] };
+  if (!election || !candidates) return { electionId: null, startTime: null, endTime: null, positions: [] };
 
   const positionsMap = {};
 
@@ -27,12 +27,17 @@ export const processElectionData = (election, candidates) => {
       name: candidate.full_name,
       party: candidate.party_name || 'Independent',
       image: candidate.photo_url || `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(candidate.full_name)}`,
+      status: candidate.status,
+      photo_url: candidate.photo_url,
+      full_name: candidate.full_name,
+      party_name: candidate.party_name
     });
   });
 
   return {
     electionId: election.election_id,
-    endTime: new Date(election.end_at),
+    startTime: election.start_at,  // ADD THIS
+    endTime: election.end_at,
     positions: Object.values(positionsMap).sort((a, b) => a.id - b.id)
   };
 };

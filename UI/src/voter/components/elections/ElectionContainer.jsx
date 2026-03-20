@@ -4,12 +4,12 @@ import ConfirmationModal from "./ConfirmationModal";
 import SuccessToast from "./SuccessToast";
 import CountdownTimer from "./CountdownTimer";
 
-// Background images per election type – no generic fallback
+// Background images per election type
 const backgroundImages = {
-  1: "https://tse1.mm.bing.net/th/id/OIP.JQ4NpNKqdQvSOI2NjFc6BgHaFV?rs=1&pid=ImgDetMain&o=7&rm=3", // National
-  2: "https://www.rappler.com/tachyon/2023/02/imho-community-governance.png",                     // Barangay
-  3: "https://www.shutterstock.com/image-vector/students-who-vote-class-gain-260nw-2421182715.jpg", // Class
-  4: "https://tse2.mm.bing.net/th/id/OIP.EGnBKA1h5l0Pxy1hq96fhwHaEJ?rs=1&pid=ImgDetMain&o=7&rm=3", // Custom
+  1: "https://tse1.mm.bing.net/th/id/OIP.JQ4NpNKqdQvSOI2NjFc6BgHaFV?rs=1&pid=ImgDetMain&o=7&rm=3",
+  2: "https://www.rappler.com/tachyon/2023/02/imho-community-governance.png",
+  3: "https://www.shutterstock.com/image-vector/students-who-vote-class-gain-260nw-2421182715.jpg",
+  4: "https://tse2.mm.bing.net/th/id/OIP.EGnBKA1h5l0Pxy1hq96fhwHaEJ?rs=1&pid=ImgDetMain&o=7&rm=3",
 };
 
 export default function ElectionContainer({
@@ -17,9 +17,10 @@ export default function ElectionContainer({
   electionTagline,
   positions,
   onSubmitVotes,
+  startTime,
   endTime,
   serverTime,
-  electionTypeId, // required – used to select the background image
+  electionTypeId,
 }) {
   const [votes, setVotes] = useState({});
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -27,25 +28,53 @@ export default function ElectionContainer({
   const [voteCount, setVoteCount] = useState(0);
   const [hasVoted, setHasVoted] = useState(false);
   const [validationMessage, setValidationMessage] = useState("");
-  const [isExpired, setIsExpired] = useState(false);
+  const [electionState, setElectionState] = useState({
+    isActive: false,
+    isEnded: false,
+    isNotStarted: false,
+    timeUntilStart: 0
+  });
   const [fadeIn, setFadeIn] = useState(false);
 
   useEffect(() => {
     setFadeIn(true);
   }, []);
 
+  // Check election state periodically
   useEffect(() => {
-    if (!endTime) return;
-    const checkExpiry = () => {
-      setIsExpired(new Date() >= new Date(endTime));
+    const checkElectionState = () => {
+      if (!startTime || !endTime) return;
+
+      const parseMySQLDate = (mysqlDateTime) => {
+        if (!mysqlDateTime) return null;
+        if (mysqlDateTime.includes(' ')) {
+          const [datePart, timePart] = mysqlDateTime.split(' ');
+          const [year, month, day] = datePart.split('-');
+          const [hour, minute, second] = timePart.split(':');
+          return new Date(Date.UTC(year, month - 1, day, hour - 8, minute, second));
+        }
+        return new Date(mysqlDateTime);
+      };
+
+      const start = parseMySQLDate(startTime);
+      const end = parseMySQLDate(endTime);
+      const now = new Date();
+
+      setElectionState({
+        isActive: now >= start && now <= end,
+        isEnded: now > end,
+        isNotStarted: now < start,
+        timeUntilStart: Math.max(0, Math.floor((start - now) / 1000))
+      });
     };
-    checkExpiry();
-    const interval = setInterval(checkExpiry, 1000);
+
+    checkElectionState();
+    const interval = setInterval(checkElectionState, 1000);
     return () => clearInterval(interval);
-  }, [endTime]);
+  }, [startTime, endTime]);
 
   const handleSelect = (positionId, isMulti) => (value) => {
-    if (isExpired) return;
+    if (electionState.isEnded || !electionState.isActive || hasVoted) return;
     setVotes((prev) => {
       if (typeof value === "function") {
         return { ...prev, [positionId]: value(prev[positionId]) };
@@ -56,12 +85,13 @@ export default function ElectionContainer({
   };
 
   const handleSubmitClick = () => {
-    if (isExpired) return;
+    if (electionState.isEnded || !electionState.isActive || hasVoted) return;
     setShowConfirmModal(true);
   };
 
   const handleConfirmVote = async () => {
-    if (isExpired) return;
+    if (electionState.isEnded || !electionState.isActive || hasVoted) return;
+    
     const total = Object.values(votes).reduce((acc, val) => {
       if (Array.isArray(val)) return acc + val.length;
       return acc + (val ? 1 : 0);
@@ -135,16 +165,59 @@ export default function ElectionContainer({
     }
   });
 
-  const disabled = hasVoted || isExpired;
-
-  // Select background based on electionTypeId – if missing, no image is shown
+  const disabled = hasVoted || electionState.isEnded || !electionState.isActive;
   const backgroundUrl = electionTypeId && backgroundImages[electionTypeId]
     ? backgroundImages[electionTypeId]
     : null;
 
+  // Show "Not Started" message
+  if (electionState.isNotStarted) {
+    const formatTimeUntilStart = () => {
+      const seconds = electionState.timeUntilStart;
+      const days = Math.floor(seconds / (3600 * 24));
+      const hours = Math.floor((seconds % (3600 * 24)) / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      
+      const parts = [];
+      if (days > 0) parts.push(`${days}d`);
+      if (hours > 0 || days > 0) parts.push(`${hours}h`);
+      parts.push(`${minutes}m`);
+      parts.push(`${secs}s`);
+      return parts.join(" ");
+    };
+
+    return (
+      <div className="relative min-h-screen overflow-hidden">
+        {backgroundUrl && (
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat blur-sm"
+            style={{ backgroundImage: `url(${backgroundUrl})` }}
+          />
+        )}
+        <div className="absolute inset-0 bg-black/20" />
+        
+        <div className="relative z-10 min-h-screen flex items-center justify-center">
+          <div className="bg-white/90 backdrop-blur-md rounded-3xl p-8 max-w-md text-center shadow-2xl border border-white/50">
+            <div className="text-6xl mb-4">⏰</div>
+            <h2 className="text-2xl font-bold text-[#0f4c5c] mb-2">Election Not Started Yet</h2>
+            <p className="text-gray-600 mb-4">This election will begin in:</p>
+            <div className="bg-[#0f4c5c]/10 rounded-xl p-4 mb-4">
+              <span className="text-3xl font-mono font-bold text-[#0f4c5c]">
+                {formatTimeUntilStart()}
+              </span>
+            </div>
+            <p className="text-sm text-gray-500">
+              Please check back when the election starts.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {/* Background image – only shown if a matching type exists */}
       {backgroundUrl && (
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat blur-sm"
@@ -153,7 +226,6 @@ export default function ElectionContainer({
       )}
       <div className="absolute inset-0 bg-black/20" />
 
-      {/* Main content */}
       <div
         className={`relative z-10 min-h-screen py-6 sm:py-10 px-4 transition-opacity duration-700 ${
           fadeIn ? "opacity-100" : "opacity-0"
@@ -171,9 +243,13 @@ export default function ElectionContainer({
               </p>
             </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full lg:w-auto">
-              {endTime && (
+              {startTime && endTime && (
                 <div className="bg-white/20 backdrop-blur-md rounded-xl px-4 py-2 shadow-lg border border-white/30">
-                  <CountdownTimer endTime={endTime} serverTime={serverTime} />
+                  <CountdownTimer 
+                    startTime={startTime} 
+                    endTime={endTime} 
+                    serverTime={serverTime} 
+                  />
                 </div>
               )}
               <div className="bg-white/20 backdrop-blur-md rounded-3xl p-4 shadow-lg border border-white/30 w-full sm:w-auto overflow-x-auto">
@@ -224,6 +300,7 @@ export default function ElectionContainer({
                       candidate_id: c.candidate_id,
                       full_name: c.full_name,
                       party_name: c.party_name,
+                      status: c.status,
                     }))}
                     selectedIds={votes[pos.id] || (pos.maxVotes > 1 ? [] : null)}
                     onSelect={handleSelect(pos.id, pos.maxVotes > 1)}
@@ -246,13 +323,15 @@ export default function ElectionContainer({
               }`}
             >
               <span className="relative z-10">
-                {disabled
-                  ? isExpired
-                    ? "Election Ended"
-                    : "Vote Submitted"
+                {electionState.isEnded
+                  ? "Election Ended"
+                  : !electionState.isActive
+                  ? "Not Started Yet"
+                  : hasVoted
+                  ? "Vote Submitted"
                   : "Review & Submit"}
               </span>
-              {!disabled && !isExpired && (
+              {!disabled && !electionState.isEnded && electionState.isActive && !hasVoted && (
                 <svg
                   className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform"
                   fill="none"
@@ -265,12 +344,17 @@ export default function ElectionContainer({
             </button>
           </div>
 
-          {isExpired && (
+          {electionState.isEnded && (
             <p className="text-center text-red-500 mt-6 font-medium animate-pulse drop-shadow">
               Voting period has ended.
             </p>
           )}
-          {hasVoted && !isExpired && (
+          {!electionState.isActive && !electionState.isEnded && !electionState.isNotStarted && (
+            <p className="text-center text-yellow-500 mt-6 font-medium animate-pulse drop-shadow">
+              Election is currently inactive.
+            </p>
+          )}
+          {hasVoted && !electionState.isEnded && (
             <p className="text-center text-green-400 mt-6 font-medium animate-pulse drop-shadow">
               Thank you for participating!
             </p>

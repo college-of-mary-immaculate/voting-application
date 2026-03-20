@@ -36,17 +36,15 @@ const useAnimatedNumber = (target, duration = 800) => {
   const animationRef = useRef(null);
 
   useEffect(() => {
-    // If target didn't change, do nothing
     if (previousTarget.current === target) return;
     previousTarget.current = target;
 
-    // Cancel any ongoing animation
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
     }
 
     const startTime = performance.now();
-    const startValue = value; // current displayed value
+    const startValue = value;
     const endValue = target;
 
     const update = (now) => {
@@ -86,6 +84,11 @@ export default function ElectionTally() {
   const [error, setError] = useState('');
   const [totalVotes, setTotalVotes] = useState(0);
   const [pulsingCandidate, setPulsingCandidate] = useState(null);
+  const [electionState, setElectionState] = useState({
+    isActive: false,
+    isEnded: false,
+    isNotStarted: false
+  });
 
   const fetchResults = async () => {
     try {
@@ -97,6 +100,30 @@ export default function ElectionTally() {
         acc + pos.candidates.reduce((sum, c) => sum + (c.votes || 0), 0), 0
       );
       setTotalVotes(total);
+      
+      // Check election state if we have start and end times
+      if (res.data.election) {
+        const parseMySQLDate = (mysqlDateTime) => {
+          if (!mysqlDateTime) return null;
+          if (mysqlDateTime.includes(' ')) {
+            const [datePart, timePart] = mysqlDateTime.split(' ');
+            const [year, month, day] = datePart.split('-');
+            const [hour, minute, second] = timePart.split(':');
+            return new Date(Date.UTC(year, month - 1, day, hour - 8, minute, second));
+          }
+          return new Date(mysqlDateTime);
+        };
+        
+        const start = parseMySQLDate(res.data.election.start_at);
+        const end = parseMySQLDate(res.data.election.end_at);
+        const now = new Date();
+        
+        setElectionState({
+          isActive: now >= start && now <= end,
+          isEnded: now > end,
+          isNotStarted: now < start
+        });
+      }
     } catch (err) {
       console.error('Failed to fetch results:', err);
       setError('Failed to load results');
@@ -109,8 +136,6 @@ export default function ElectionTally() {
     fetchResults();
     socket.emit('joinElection', parseInt(electionId));
     socket.on('voteUpdate', () => {
-      // When we get a voteUpdate, we compare old and new data
-      // For simplicity, we'll re-fetch and then detect changes
       fetchResults();
     });
     return () => {
@@ -118,27 +143,16 @@ export default function ElectionTally() {
     };
   }, [electionId]);
 
-  // Detect changes when results update
-  useEffect(() => {
-    if (results.length === 0) return;
-    // For each candidate, if votes changed, set pulsing
-    // We need previous results stored; but we don't have them directly.
-    // Instead, we can store previous results in a ref and compare.
-  }, [results]);
-
-  // Store previous results to detect changes
   const prevResultsRef = useRef([]);
   useEffect(() => {
     if (prevResultsRef.current.length === 0) {
       prevResultsRef.current = results;
       return;
     }
-    // Compare candidates' votes
     const prevMap = new Map();
     prevResultsRef.current.forEach(pos => {
       pos.candidates.forEach(c => prevMap.set(c.candidate_id, c.votes));
     });
-    // Check for any candidate with increased votes
     for (const pos of results) {
       for (const c of pos.candidates) {
         const prev = prevMap.get(c.candidate_id) || 0;
@@ -192,6 +206,20 @@ export default function ElectionTally() {
     );
   }
 
+  // Determine status message
+  let statusMessage = '';
+  let statusColor = '';
+  if (electionState.isNotStarted) {
+    statusMessage = '⏰ Election Not Started Yet';
+    statusColor = 'bg-amber-50 border-amber-200 text-amber-700';
+  } else if (electionState.isActive) {
+    statusMessage = '🟢 Live Results - Votes Update in Real Time';
+    statusColor = 'bg-green-50 border-green-200 text-green-700';
+  } else if (electionState.isEnded) {
+    statusMessage = '🏁 Final Results - Election Concluded';
+    statusColor = 'bg-gray-50 border-gray-200 text-gray-700';
+  }
+
   return (
     <div className="min-h-screen relative py-12 px-4 sm:px-6 lg:px-8">
       <div className="absolute inset-0 bg-cover bg-center bg-no-repeat blur-sm" style={{ backgroundImage: "url('https://img.freepik.com/premium-vector/philippines-election-banner-background-template-your-design_97886-9564.jpg')" }}></div>
@@ -210,12 +238,23 @@ export default function ElectionTally() {
               </div>
             </div>
           </div>
-          {election?.end_at && (
+          {election?.start_at && election?.end_at && (
             <div className="bg-white/70 backdrop-blur-md rounded-xl px-6 py-3 shadow-lg border border-white/50">
-              <CountdownTimer endTime={election.end_at} serverTime={new Date().toISOString()} />
+              <CountdownTimer 
+                startTime={election.start_at}
+                endTime={election.end_at} 
+                serverTime={new Date().toISOString()} 
+              />
             </div>
           )}
         </div>
+
+        {/* Status Banner */}
+        {statusMessage && (
+          <div className={`mb-8 ${statusColor} border rounded-xl px-4 py-3 text-center backdrop-blur-sm`}>
+            <span className="font-medium">{statusMessage}</span>
+          </div>
+        )}
 
         <div className="space-y-12">
           {results.map((position) => {
@@ -247,7 +286,7 @@ export default function ElectionTally() {
                       {candidates.map((candidate, idx) => {
                         const votes = candidate.votes || 0;
                         const percentage = maxVotes > 0 ? (votes / maxVotes) * 100 : 0;
-                        const isWinner = votes === maxVotes && maxVotes > 0;
+                        const isWinner = votes === maxVotes && maxVotes > 0 && !electionState.isNotStarted;
                         const barGradient = getBarGradient(idx);
                         const photoUrl = candidate.photo_url;
                         const fullUrl = photoUrl ? getImageUrl(photoUrl) : null;
@@ -268,7 +307,7 @@ export default function ElectionTally() {
                                 }`}
                                 style={{ height: `${percentage}%`, minHeight: votes > 0 ? '4px' : '0px' }}
                               />
-                              {isWinner && (
+                              {isWinner && !electionState.isNotStarted && (
                                 <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 z-20">
                                   <div className="text-2xl sm:text-3xl animate-bounce drop-shadow-lg">👑</div>
                                 </div>
@@ -305,7 +344,7 @@ export default function ElectionTally() {
                                 </div>
                               )}
                               <div className="mt-1 sm:mt-2 flex items-baseline justify-center gap-0.5">
-                                <AnimatedNumber value={votes} className={`text-sm sm:text-lg font-bold ${isWinner ? 'text-amber-500' : 'text-indigo-600'}`} />
+                                <AnimatedNumber value={votes} className={`text-sm sm:text-lg font-bold ${isWinner && !electionState.isNotStarted ? 'text-amber-500' : 'text-indigo-600'}`} />
                                 <span className="text-[10px] text-gray-500">votes</span>
                               </div>
                             </div>
@@ -315,7 +354,7 @@ export default function ElectionTally() {
                     </div>
                   </div>
 
-                  {isTie && maxVotes > 0 && (
+                  {isTie && maxVotes > 0 && !electionState.isNotStarted && (
                     <div className="bg-gradient-to-r from-amber-50 to-amber-100 px-6 py-2 text-center text-xs text-amber-800 border-t border-amber-200">
                       🏆 Tie for the lead! Multiple candidates share the highest votes.
                     </div>

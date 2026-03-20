@@ -133,6 +133,7 @@ export default function ClassElection() {
       electionTagline="Choose your class officers"
       positions={positions}
       onSubmitVotes={handleSubmit}
+      startTime={election.start_at}
       endTime={election.end_at}
       serverTime={new Date().toISOString()}
       electionTypeId={election.election_type_id} 

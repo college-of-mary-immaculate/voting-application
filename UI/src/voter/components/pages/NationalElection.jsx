@@ -10,7 +10,7 @@ import ElectionContainer from "../elections/ElectionContainer";
 import { processElectionData } from "../../utils/electionHelpers";
 
 export default function NationalElection() {
-  const { electionId } = useParams(); // ID mula sa URL
+  const { electionId } = useParams();
   const navigate = useNavigate();
 
   const [positions, setPositions] = useState([]);
@@ -30,11 +30,9 @@ export default function NationalElection() {
         setLoading(true);
         setError("");
 
-        // Kunin ang lahat ng assigned elections
         const electionsRes = await getElections();
         const electionsData = electionsRes.data?.data || [];
 
-        // Hanapin ang election na may tugmang ID
         const foundElection = electionsData.find(
           (e) => e.election_id === parseInt(electionId)
         );
@@ -45,7 +43,6 @@ export default function NationalElection() {
           return;
         }
 
-        // Kung nakaboto na, i-redirect sa tally
         if (foundElection.has_voted) {
           navigate(`/elections/tally/${electionId}`);
           return;
@@ -53,7 +50,6 @@ export default function NationalElection() {
 
         setElection(foundElection);
 
-        // Kunin ang candidates
         const candidatesRes = await getCandidates();
         const allCandidates = candidatesRes.data?.data || [];
         const electionCandidates = allCandidates.filter(
@@ -103,7 +99,6 @@ export default function NationalElection() {
       });
 
       await castVote({ election_id: election.election_id, votes });
-      // Pagkatapos mag-vote, pupunta sa tally
       navigate(`/elections/tally/${electionId}`);
     } catch (err) {
       console.error("Vote submission failed:", err);
@@ -138,6 +133,7 @@ export default function NationalElection() {
       electionTagline="Shape the future of our nation"
       positions={positions}
       onSubmitVotes={handleSubmit}
+      startTime={election.start_at}  // ADD THIS
       endTime={election.end_at}
       serverTime={new Date().toISOString()}
       electionTypeId={election.election_type_id} 

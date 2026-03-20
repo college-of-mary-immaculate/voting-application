@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { removeAuthToken, getElections, isAuthenticated } from '../../services/api';
 
-// Mapping ng election_type_id sa icon at URL slug
 const electionTypeMap = {
   1: {
     slug: 'national',
@@ -51,6 +50,7 @@ export default function ElectionLayout() {
   const [elections, setElections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     const checkScreen = () => {
@@ -63,34 +63,35 @@ export default function ElectionLayout() {
     return () => window.removeEventListener('resize', checkScreen);
   }, []);
 
-  // Check authentication first
+  // Check authentication and get user info
   useEffect(() => {
     const checkAuth = async () => {
-      const authenticated = await isAuthenticated(); // You need to implement this
+      const authenticated = await isAuthenticated();
       if (!authenticated) {
         removeAuthToken();
         navigate('/login', { replace: true });
         return;
       }
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      }
       setAuthChecked(true);
     };
-    
     checkAuth();
   }, [navigate]);
 
-  // Kunin ang lahat ng assigned elections - only if authenticated
+  // Fetch elections only if authenticated
   useEffect(() => {
     if (!authChecked) return;
 
     const fetchElections = async () => {
       try {
         setLoading(true);
-        const res = await getElections(); // GET /elections/my-elections
+        const res = await getElections();
         setElections(res.data?.data || []);
       } catch (err) {
         console.error('Failed to fetch elections:', err);
-        
-        // Check if error is due to unauthorized
         if (err.response?.status === 401) {
           removeAuthToken();
           navigate('/login', { replace: true });
@@ -99,11 +100,10 @@ export default function ElectionLayout() {
         setLoading(false);
       }
     };
-    
     fetchElections();
   }, [authChecked, navigate]);
 
-  // Auto-redirect kung nasa /elections root at may elections
+  // Auto-redirect if at /elections root
   useEffect(() => {
     if (!loading && elections.length > 0 && location.pathname === '/elections') {
       const first = elections[0];
@@ -120,12 +120,12 @@ export default function ElectionLayout() {
 
   const handleLogout = () => {
     removeAuthToken();
+    localStorage.removeItem('user');
     navigate('/login', { replace: true });
   };
 
   const isActive = (path) => location.pathname.startsWith(path);
 
-  // Show loading while checking auth
   if (!authChecked) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
@@ -134,31 +134,25 @@ export default function ElectionLayout() {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
-        <div className="animate-pulse text-2xl text-indigo-600">Loading your elections...</div>
-      </div>
-    );
-  }
-
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
       <aside
         className={`
-          fixed left-0 top-0 h-full z-30 bg-white/90 backdrop-blur-md border-r border-indigo-100 shadow-2xl
-          transition-all duration-300 flex flex-col overflow-hidden
+          fixed left-0 top-0 h-full z-30 bg-white/80 backdrop-blur-md border-r border-indigo-100 shadow-xl
+          transition-all duration-300 ease-in-out flex flex-col overflow-hidden
           ${sidebarOpen ? 'w-64' : 'w-20'}
         `}
       >
-        <div className="absolute -top-20 -left-20 w-64 h-64 bg-gradient-to-br from-indigo-200 to-purple-200 rounded-full opacity-40 blur-3xl"></div>
-        <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-gradient-to-br from-pink-200 to-orange-200 rounded-full opacity-40 blur-3xl"></div>
+        {/* Decorative blobs */}
+        <div className="absolute -top-20 -left-20 w-64 h-64 bg-gradient-to-br from-indigo-200 to-purple-200 rounded-full opacity-30 blur-3xl"></div>
+        <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-gradient-to-br from-pink-200 to-orange-200 rounded-full opacity-30 blur-3xl"></div>
 
+        {/* Toggle Button */}
         <div className="p-4 flex justify-end relative z-10">
           <button
             onClick={toggleSidebar}
             className="p-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
           >
             {sidebarOpen ? (
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -172,49 +166,74 @@ export default function ElectionLayout() {
           </button>
         </div>
 
-        <nav className="flex-1 px-3 space-y-2 relative z-10">
-          {elections.map((election) => {
-            const typeId = election.election_type_id;
-            const info = electionTypeMap[typeId] || electionTypeMap[4];
-            const landingPath = `/elections/${info.slug}/${election.election_id}`;
-            const tallyPath = `/elections/tally/${election.election_id}`;
-            const active = location.pathname === landingPath || location.pathname === tallyPath;
-            return (
-              <button
-                key={election.election_id}
-                onClick={() => {
-                  if (election.has_voted) {
-                    navigate(tallyPath);
-                  } else {
-                    navigate(landingPath);
-                  }
-                }}
-                className={`
-                  w-full flex items-center px-3 py-3 rounded-xl transition-all duration-200 group
-                  ${sidebarOpen ? 'justify-start space-x-3' : 'justify-center'}
-                  ${active 
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' 
-                    : 'text-indigo-800 hover:bg-indigo-100'
-                  }
-                `}
-              >
-                <span className={active ? 'text-white' : 'text-indigo-600'}>
-                  {info.icon(active)}
-                </span>
-                {sidebarOpen && (
-                  <span className="text-sm font-medium truncate">{info.name}</span>
-                )}
-                {active && sidebarOpen && (
-                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
-                )}
-              </button>
-            );
-          })}
-          {elections.length === 0 && (
+        {/* User Info */}
+        {user && sidebarOpen && (
+          <div className="px-4 py-3 border-b border-indigo-100">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold">
+                {user.fullname?.charAt(0) || user.full_name?.charAt(0) || 'U'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-800 truncate">{user.fullname || user.full_name}</p>
+                <p className="text-xs text-gray-500 truncate">{user.email}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Navigation Links */}
+        <nav className="flex-1 px-3 py-4 space-y-1 relative z-10 overflow-y-auto">
+          {loading ? (
+            Array(3).fill(0).map((_, i) => (
+              <div key={i} className="flex items-center px-3 py-3 rounded-xl animate-pulse">
+                <div className="w-5 h-5 bg-gray-200 rounded-full mr-3"></div>
+                {sidebarOpen && <div className="h-4 bg-gray-200 rounded w-24"></div>}
+              </div>
+            ))
+          ) : elections.length === 0 ? (
             <div className="text-center text-gray-500 text-sm py-4">No elections assigned</div>
+          ) : (
+            elections.map((election) => {
+              const typeId = election.election_type_id;
+              const info = electionTypeMap[typeId] || electionTypeMap[4];
+              const landingPath = `/elections/${info.slug}/${election.election_id}`;
+              const tallyPath = `/elections/tally/${election.election_id}`;
+              const active = location.pathname === landingPath || location.pathname === tallyPath;
+              return (
+                <button
+                  key={election.election_id}
+                  onClick={() => {
+                    if (election.has_voted) {
+                      navigate(tallyPath);
+                    } else {
+                      navigate(landingPath);
+                    }
+                  }}
+                  className={`
+                    w-full flex items-center px-3 py-3 rounded-xl transition-all duration-200 group
+                    ${sidebarOpen ? 'justify-start space-x-3' : 'justify-center'}
+                    ${active 
+                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-200' 
+                      : 'text-indigo-800 hover:bg-indigo-100'
+                    }
+                  `}
+                >
+                  <span className={active ? 'text-white' : 'text-indigo-600'}>
+                    {info.icon(active)}
+                  </span>
+                  {sidebarOpen && (
+                    <span className="text-sm font-medium truncate">{info.name}</span>
+                  )}
+                  {active && sidebarOpen && (
+                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                  )}
+                </button>
+              );
+            })
           )}
         </nav>
 
+        {/* Logout Button */}
         <div className="p-4 border-t border-indigo-100 relative z-10">
           <button
             onClick={handleLogout}
@@ -238,28 +257,44 @@ export default function ElectionLayout() {
           ${sidebarOpen ? 'ml-64' : 'ml-20'}
         `}
       >
-        {elections.length === 0 ? (
-          // Fallback UI kapag walang assigned elections
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center max-w-md p-8 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl">
-              <div className="text-6xl mb-4">🗳️</div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">No Elections Assigned</h2>
-              <p className="text-gray-600 mb-6">
-                You are not currently assigned to any election.
-              </p>
-              <button
-                onClick={handleLogout}
-                className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-              >
-                Logout
-              </button>
+        <div className="animate-fadeIn">
+          {elections.length === 0 ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center max-w-md p-8 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl">
+                <div className="text-6xl mb-4">🗳️</div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">No Elections Assigned</h2>
+                <p className="text-gray-600 mb-6">
+                  You are not currently assigned to any election.
+                </p>
+                <button
+                  onClick={handleLogout}
+                  className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  Logout
+                </button>
+              </div>
             </div>
-          </div>
-        ) : (
-          // May elections – i-render ang child routes (landing, vote, tally)
-          <Outlet />
-        )}
+          ) : (
+            <Outlet />
+          )}
+        </div>
       </main>
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 }

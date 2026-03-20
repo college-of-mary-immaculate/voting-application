@@ -10,7 +10,7 @@ import ElectionContainer from "../elections/ElectionContainer";
 import { processElectionData } from "../../utils/electionHelpers";
 
 export default function NationalElection() {
-  const { electionId } = useParams(); // Kunin ang ID mula sa URL
+  const { electionId } = useParams(); // ID mula sa URL
   const navigate = useNavigate();
 
   const [positions, setPositions] = useState([]);

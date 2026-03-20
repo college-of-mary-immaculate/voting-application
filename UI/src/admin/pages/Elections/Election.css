@@ -15,11 +15,8 @@
 .election-title {
   font-size: 2.5rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #111827 0%, #2563eb 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 0.75rem;
+  color: #111827;
+  margin-bottom: 0.5rem;
 }
 
 .election-subtitle {

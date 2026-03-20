@@ -41,7 +41,16 @@ export default function ElectionLanding() {
         const res = await getElections(); // GET /elections/my-elections
         const elections = res.data?.data || [];
         const found = elections.find(e => e.election_id === parseInt(electionId));
-        setElection(found || null);
+        if (found) {
+          // ✅ Kung nakaboto na, redirect agad sa tally
+          if (found.has_voted) {
+            navigate(`/elections/tally/${electionId}`, { replace: true });
+            return;
+          }
+          setElection(found);
+        } else {
+          setElection(null);
+        }
       } catch (err) {
         console.error('Failed to fetch election:', err);
       } finally {
@@ -49,7 +58,7 @@ export default function ElectionLanding() {
       }
     };
     fetchElection();
-  }, [electionId]);
+  }, [electionId, navigate]);
 
   if (loading) {
     return (

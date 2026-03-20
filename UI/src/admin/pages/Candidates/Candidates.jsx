@@ -187,10 +187,20 @@ export default function Candidates() {
     if (!window.confirm('Are you sure you want to delete this candidate?')) return;
 
     try {
-      await API.delete(`/candidates/${candidate_id}`);
-      alert('Candidate deleted successfully!');
-      fetchCandidates();
+      const response = await fetch(`${API.getBaseURL()}/api/candidates/${candidate_id}`, {
+        method: 'DELETE',
+        headers: API.getHeaders(),
+      });
+      
+      if (response.ok) {
+        alert('Candidate deleted successfully!');
+        fetchCandidates();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Delete failed');
+      }
     } catch (err) {
+      console.error('Delete error:', err);
       alert(`Error: ${err.message}`);
     }
   };

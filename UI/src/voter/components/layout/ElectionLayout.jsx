@@ -1,71 +1,74 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { removeAuthToken } from '../../services/api';
+import { removeAuthToken, getElections } from '../../services/api';
 
-const elections = [
-  { 
-    id: 'national', 
-    name: 'National Election', 
-    path: '/elections/national',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+// Mapping ng election_type_id sa icon at URL slug
+const electionTypeMap = {
+  1: { slug: 'national', name: 'National Election', icon: (active) => (
+      <svg className="w-5 h-5" fill="none" stroke={active ? 'white' : 'currentColor'} viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
-    )
-  },
-  { 
-    id: 'barangay', 
-    name: 'Barangay Election', 
-    path: '/elections/barangay',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    ) },
+  2: { slug: 'barangay', name: 'Barangay Election', icon: (active) => (
+      <svg className="w-5 h-5" fill="none" stroke={active ? 'white' : 'currentColor'} viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
       </svg>
-    )
-  },
-  { 
-    id: 'class', 
-    name: 'Class Election', 
-    path: '/elections/class',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    ) },
+  3: { slug: 'class', name: 'Class Election', icon: (active) => (
+      <svg className="w-5 h-5" fill="none" stroke={active ? 'white' : 'currentColor'} viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
       </svg>
-    )
-  },
-  { 
-    id: 'custom', 
-    name: 'Custom Election', 
-    path: '/elections/custom',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    ) },
+  4: { slug: 'custom', name: 'Custom Election', icon: (active) => (
+      <svg className="w-5 h-5" fill="none" stroke={active ? 'white' : 'currentColor'} viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
       </svg>
-    )
-  },
-];
+    ) },
+};
 
 export default function ElectionLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [elections, setElections] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const checkScreen = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      if (mobile) {
-        setSidebarOpen(false);
-      } else {
-        setSidebarOpen(true);
-      }
+      setSidebarOpen(!mobile);
     };
     checkScreen();
     window.addEventListener('resize', checkScreen);
     return () => window.removeEventListener('resize', checkScreen);
   }, []);
+
+  // Kunin ang lahat ng assigned elections
+  useEffect(() => {
+    const fetchElections = async () => {
+      try {
+        const res = await getElections(); // GET /elections/my-elections
+        setElections(res.data?.data || []);
+      } catch (err) {
+        console.error('Failed to fetch elections:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchElections();
+  }, []);
+
+  // Auto-redirect sa unang election landing page kung nasa /elections
+  useEffect(() => {
+    if (!loading && elections.length > 0 && location.pathname === '/elections') {
+      const first = elections[0];
+      const slug = electionTypeMap[first.election_type_id]?.slug || 'custom';
+      navigate(`/elections/${slug}/${first.election_id}`, { replace: true });
+    }
+  }, [loading, elections, location.pathname, navigate]);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
@@ -74,11 +77,23 @@ export default function ElectionLayout() {
     navigate('/login');
   };
 
-  const isActive = (path) => location.pathname === path;
+  // Check if a given election is active (either its landing, vote, or tally page)
+  const isElectionActive = (election) => {
+    const slug = electionTypeMap[election.election_type_id]?.slug || 'custom';
+    const basePath = `/elections/${slug}/${election.election_id}`;
+    return location.pathname.startsWith(basePath) || location.pathname === `/elections/tally/${election.election_id}`;
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="animate-pulse text-2xl text-indigo-600">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
-      {/* Fixed Sidebar */}
       <aside
         className={`
           fixed left-0 top-0 h-full z-30 bg-white/90 backdrop-blur-md border-r border-indigo-100 shadow-2xl
@@ -86,16 +101,13 @@ export default function ElectionLayout() {
           ${sidebarOpen ? 'w-64' : 'w-20'}
         `}
       >
-        {/* Decorative blobs */}
         <div className="absolute -top-20 -left-20 w-64 h-64 bg-gradient-to-br from-indigo-200 to-purple-200 rounded-full opacity-40 blur-3xl"></div>
         <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-gradient-to-br from-pink-200 to-orange-200 rounded-full opacity-40 blur-3xl"></div>
 
-        {/* Toggle Button */}
         <div className="p-4 flex justify-end relative z-10">
           <button
             onClick={toggleSidebar}
             className="p-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-            aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
           >
             {sidebarOpen ? (
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -109,14 +121,16 @@ export default function ElectionLayout() {
           </button>
         </div>
 
-        {/* Navigation Links */}
         <nav className="flex-1 px-3 space-y-2 relative z-10">
           {elections.map((election) => {
-            const active = isActive(election.path);
+            const typeId = election.election_type_id;
+            const info = electionTypeMap[typeId] || electionTypeMap[4];
+            const landingPath = `/elections/${info.slug}/${election.election_id}`;
+            const active = isElectionActive(election);
             return (
               <button
-                key={election.id}
-                onClick={() => navigate(election.path)}
+                key={election.election_id}
+                onClick={() => navigate(landingPath)}
                 className={`
                   w-full flex items-center px-3 py-3 rounded-xl transition-all duration-200 group
                   ${sidebarOpen ? 'justify-start space-x-3' : 'justify-center'}
@@ -127,10 +141,10 @@ export default function ElectionLayout() {
                 `}
               >
                 <span className={active ? 'text-white' : 'text-indigo-600'}>
-                  {election.icon}
+                  {info.icon(active)}
                 </span>
                 {sidebarOpen && (
-                  <span className="text-sm font-medium">{election.name}</span>
+                  <span className="text-sm font-medium truncate">{info.name}</span>
                 )}
                 {active && sidebarOpen && (
                   <span className="ml-auto w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
@@ -138,9 +152,11 @@ export default function ElectionLayout() {
               </button>
             );
           })}
+          {elections.length === 0 && (
+            <div className="text-center text-gray-500 text-sm py-4">No elections assigned</div>
+          )}
         </nav>
 
-        {/* Logout Button */}
         <div className="p-4 border-t border-indigo-100 relative z-10">
           <button
             onClick={handleLogout}
@@ -158,7 +174,6 @@ export default function ElectionLayout() {
         </div>
       </aside>
 
-      {/* Main Content sidebar width */}
       <main
         className={`
           min-h-screen transition-all duration-300 p-4 md:p-6

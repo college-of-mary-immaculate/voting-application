@@ -317,7 +317,7 @@ export default function Candidates() {
       </div>
 
       <div className="page-footer">
-        <small>Connected to backend • {candidates.length} candidates loaded</small>
+        <small>Parallel Voting System • {candidates.length} candidates loaded</small>
       </div>
     </div>
   );

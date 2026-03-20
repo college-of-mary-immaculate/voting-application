@@ -298,7 +298,7 @@ export default function Users() {
       </div>
 
       <div className="page-footer">
-        <small>Connected to backend • {voters.length} voters loaded</small>
+        <small>Parallel Voting System • {voters.length} voters loaded</small>
       </div>
     </div>
   );

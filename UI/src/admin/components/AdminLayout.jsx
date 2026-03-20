@@ -1,11 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import TokenHandler from "./TokenHandler";
 import "./AdminLayout.css";
-import "../../admin-global.css";  // dalawang dots, papuntang src/
+import "../../admin-global.css";
 
 function AdminLayout() {
   const navigate = useNavigate();
+  const [isSidebarVisible, setIsSidebarVisible] = useState(false); 
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -13,72 +14,91 @@ function AdminLayout() {
     window.location.href = '/login';
   };
 
+  const toggleSidebar = () => {
+    setIsSidebarVisible(!isSidebarVisible);
+  };
+
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   return (
     <TokenHandler>
-      {/* admin-container serves as the scoped wrapper for all admin styles */}
       <div className="admin-container">
-        <aside className="sidebar">
-          <div className="sidebar-header">
-            <h3>Admin Panel</h3>
-          </div>
-
-          <nav className="sidebar-nav">
-            <NavLink
-              to="/admin"
-              end
-              className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
-            >
-              <span className="icon">🏠</span> Dashboard
-            </NavLink>
-
-            <NavLink
-              to="/admin/users"
-              className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
-            >
-              <span className="icon">👥</span> Users
-            </NavLink>
-
-            <NavLink
-              to="/admin/elections"
-              className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
-            >
-              <span className="icon">🗳️</span> Elections
-            </NavLink>
-
-            <NavLink
-              to="/admin/candidates"
-              className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
-            >
-              <span className="icon">🏆</span> Candidates
-            </NavLink>
-
-            <NavLink
-              to="/admin/admins"
-              className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
-            >
-              <span className="icon">👤</span> Admins
-            </NavLink>
-          </nav>
-
-          <div className="sidebar-footer">
-            <div className="user-info" style={{ padding: '0 0 1rem 0', textAlign: 'center', borderBottom: '1px solid #334155', marginBottom: '1rem' }}>
-              <small style={{ color: '#94a3b8' }}>Logged in as:</small>
-              <div style={{ color: 'white', fontWeight: 500 }}>{user.fullname || user.email || 'Admin'}</div>
+        {/* Sidebar - conditionally rendered */}
+        {isSidebarVisible && (
+          <aside className="sidebar">
+            <div className="sidebar-header">
+              <h3>Admin Panel</h3>
             </div>
-            <button className="logout-btn" onClick={handleLogout}>
-              Logout
-            </button>
-          </div>
-        </aside>
 
-        <div className="main-area">
+            <nav className="sidebar-nav">
+              <NavLink
+                to="/admin"
+                end
+                className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+              >
+                <span className="icon">🏠</span>
+                <span>Dashboard</span>
+              </NavLink>
+
+              <NavLink
+                to="/admin/users"
+                className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+              >
+                <span className="icon">👥</span>
+                <span>Users</span>
+              </NavLink>
+
+              <NavLink
+                to="/admin/elections"
+                className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+              >
+                <span className="icon">🗳️</span>
+                <span>Elections</span>
+              </NavLink>
+
+              <NavLink
+                to="/admin/candidates"
+                className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+              >
+                <span className="icon">🏆</span>
+                <span>Candidates</span>
+              </NavLink>
+
+              <NavLink
+                to="/admin/admins"
+                className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+              >
+                <span className="icon">👤</span>
+                <span>Admins</span>
+              </NavLink>
+            </nav>
+
+            <div className="sidebar-footer">
+              <div className="user-info-container">
+                <small className="user-info-label">Logged in as:</small>
+                <div className="user-info-name">
+                  {user.fullname || user.email || 'Admin'}
+                </div>
+              </div>
+              <button className="logout-btn" onClick={handleLogout}>
+                <span>🚪</span>
+                <span>Logout</span>
+              </button>
+            </div>
+          </aside>
+        )}
+
+        <div className="main-area" style={{ marginLeft: isSidebarVisible ? '240px' : '0' }}>
           <header className="top-header">
+            <div className="header-left">
+              <button className="menu-toggle-btn" onClick={toggleSidebar}>
+                <span className="icon">☰</span>
+              </button>
+            </div>
             <div className="header-center">
-              <span className="user-info" style={{ color: '#1e293b', fontWeight: 500 }}>
+              <div className="welcome-message">
                 Welcome, {user.fullname || user.email || 'Admin'}!
-              </span>
+              </div>
             </div>
           </header>
 

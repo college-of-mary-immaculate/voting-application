@@ -252,7 +252,7 @@ export default function Admins() {
       </div>
 
       <div className="page-footer">
-        <small>Connected to backend • {admins.length} admins loaded</small>
+        <small>Parallel Voting System • {admins.length} admins loaded</small>
       </div>
     </div>
   );

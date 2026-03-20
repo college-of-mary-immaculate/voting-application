@@ -1184,7 +1184,7 @@ const uploadPhoto = async () => {
       )}
 
       <p className="election-footer text-center mt-8 text-gray-500">
-        🗳️ Connected to backend • {elections.length} elections loaded
+        Parallel Voting System • {elections.length} elections loaded
       </p>
     </div>
   );

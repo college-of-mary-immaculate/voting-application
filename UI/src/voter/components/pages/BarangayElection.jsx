@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   getElections,
   getCandidates,
@@ -10,10 +10,11 @@ import ElectionContainer from "../elections/ElectionContainer";
 import { processElectionData } from "../../utils/electionHelpers";
 
 export default function BarangayElection() {
+  const { electionId } = useParams();
   const navigate = useNavigate();
+
   const [positions, setPositions] = useState([]);
-  const [electionId, setElectionId] = useState(null);
-  const [election, setElection] = useState(null); // ✅ ADDED
+  const [election, setElection] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -24,44 +25,38 @@ export default function BarangayElection() {
   }, [navigate]);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchElection = async () => {
       try {
         setLoading(true);
         setError("");
 
         const electionsRes = await getElections();
-        const electionsData = electionsRes.data.data || [];
+        const electionsData = electionsRes.data?.data || [];
 
-        const elections = (
-          Array.isArray(electionsData) ? electionsData : [electionsData]
-        ).filter(Boolean);
-
-        const barangayElection = elections.find(
-          (e) => e.election_type_id === 2 && e.status !== "Closed"
+        const foundElection = electionsData.find(
+          (e) => e.election_id === parseInt(electionId)
         );
 
-        if (!barangayElection) {
-          setError("No active barangay election found.");
+        if (!foundElection) {
+          setError("Election not found or you are not assigned to it.");
           setLoading(false);
           return;
         }
 
-        setElection(barangayElection); // ✅ STORE IT
+        if (foundElection.has_voted) {
+          navigate(`/elections/tally/${electionId}`);
+          return;
+        }
 
-        // --- Fetch candidates
+        setElection(foundElection);
+
         const candidatesRes = await getCandidates();
-        const allCandidates = candidatesRes.data.data || [];
-
+        const allCandidates = candidatesRes.data?.data || [];
         const electionCandidates = allCandidates.filter(
-          c => c.election_id === barangayElection.election_id
+          (c) => c.election_id === foundElection.election_id
         );
 
-        const { electionId, positions } = processElectionData(
-          barangayElection,
-          electionCandidates
-        );
-
-        setElectionId(electionId);
+        const { positions } = processElectionData(foundElection, electionCandidates);
         setPositions(positions);
       } catch (err) {
         console.error("Failed to load election data:", err);
@@ -71,8 +66,8 @@ export default function BarangayElection() {
       }
     };
 
-    fetchData();
-  }, []);
+    fetchElection();
+  }, [electionId, navigate]);
 
   const handleSubmit = async (voteData) => {
     try {
@@ -103,11 +98,11 @@ export default function BarangayElection() {
         }
       });
 
-      await castVote({ election_id: electionId, votes });
-      return Promise.resolve();
+      await castVote({ election_id: election.election_id, votes });
+      navigate(`/elections/tally/${electionId}`);
     } catch (err) {
       console.error("Vote submission failed:", err);
-      console.error("Error response:", err.response?.data);
+      alert(err.response?.data?.message || "Failed to submit vote.");
       throw err;
     }
   };
@@ -115,9 +110,7 @@ export default function BarangayElection() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-        <div className="animate-pulse text-2xl text-indigo-600">
-          Loading Barangay Election...
-        </div>
+        <div className="animate-pulse text-2xl text-indigo-600">Loading Barangay Election...</div>
       </div>
     );
   }
@@ -132,7 +125,6 @@ export default function BarangayElection() {
     );
   }
 
-  // ✅ Prevent crash if election not ready
   if (!election) return null;
 
   return (

@@ -27,13 +27,13 @@ class DashboardController {
         []
       );
 
-      // Voters who have voted
+      // ✅ FIXED: Count voters who have actually voted (any vote in any election)
       const votedCount = await DBService.read(
-        'SELECT COUNT(*) as count FROM voters',
+        `SELECT COUNT(DISTINCT voter_id) as count FROM votes`,
         []
       );
 
-      // Calculate turnout
+      // Calculate turnout (percentage of voters who have cast at least one vote)
       const turnout = totalVoters[0].count > 0
         ? Math.round((votedCount[0].count / totalVoters[0].count) * 100)
         : 0;

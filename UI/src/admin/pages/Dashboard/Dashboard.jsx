@@ -21,28 +21,21 @@ export default function Dashboard() {
         setLoading(true);
         setError(null);
 
-        console.log('🚀 Dashboard mounted, checking token...');
         const token = localStorage.getItem('token');
-        console.log('Token in Dashboard:', token ? '✅ Present' : '❌ Missing');
         
         if (!token) {
           throw new Error('No authentication token found');
         }
 
-        console.log('📡 Fetching dashboard stats...');
         const data = await API.get('/dashboard/stats');
-        console.log('📊 Dashboard data received:', data);
-        if (!data || data.status !== 'success') {
-          throw new Error(data?.error || 'Failed to load stats');
-        }
-        setStats(data.data);
+        
         if (data.status === 'success') {
           setStats(data.data);
         } else {
           throw new Error(data.error || 'Failed to load stats');
         }
       } catch (err) {
-        console.error('❌ Dashboard error:', err);
+        console.error('Dashboard error:', err);
         setError(err.message || 'Could not load dashboard');
       } finally {
         setLoading(false);
@@ -60,17 +53,20 @@ export default function Dashboard() {
     return <div className="error-message">{error}</div>;
   }
 
+  // Calculate voters who participated
+  const votersParticipated = Math.round(stats.total_voters * stats.turnout_percentage / 100);
+
   return (
     <div className="dashboard-container">
       {/* Header */}
       <div className="page-header">
         <h1 className="page-title">Dashboard</h1>
         <p className="page-subtitle">
-          Overview of Dashboard
+          Overview of your voting system
         </p>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Grid - Removed the Turnout Card */}
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-icon">👥</div>
@@ -95,11 +91,29 @@ export default function Dashboard() {
           <div className="stat-value">{stats.total_positions}</div>
           <div className="stat-label">Total Positions</div>
         </div>
+      </div>
 
-        <div className="stat-card highlight">
-          <div className="stat-icon">📊</div>
-          <div className="stat-value">{stats.turnout_percentage}%</div>
-          <div className="stat-label">Turnout</div>
+      {/* Voter Turnout Section with Progress Bar */}
+      <div className="turnout-section">
+        <div className="turnout-header">
+          <h3 className="turnout-title">Voter Turnout</h3>
+          <div className="turnout-percentage">{stats.turnout_percentage}%</div>
+        </div>
+        <div className="turnout-bar-container">
+          <div 
+            className="turnout-bar" 
+            style={{ width: `${stats.turnout_percentage}%` }}
+          ></div>
+        </div>
+        <div className="turnout-stats">
+          <div className="turnout-stat">
+            <span className="stat-number">{votersParticipated}</span>
+            <span className="stat-text">Voters Participated</span>
+          </div>
+          <div className="turnout-stat">
+            <span className="stat-number">{stats.total_voters}</span>
+            <span className="stat-text">Total Registered</span>
+          </div>
         </div>
       </div>
 

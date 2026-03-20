@@ -37,32 +37,29 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // Unified login endpoint (handles both voter and admin)
       const res = await loginVoter(form);
-      const { result, token } = res.data;   // adjust depende sa actual response structure
+      const { result, token } = res.data;
 
       if (result.status === 'success') {
         setAuthToken(token);
 
-        // Check user type from response
         const userType = result.data?.type;
 
         if (userType === 'admin') {
-          // Store user info and redirect to admin panel
           localStorage.setItem('user', JSON.stringify(result.data));
-          // Use window.location to trigger TokenHandler
           const tokenEncoded = encodeURIComponent(token);
           const userEncoded = encodeURIComponent(JSON.stringify(result.data));
           window.location.href = `/admin?token=${tokenEncoded}&user=${userEncoded}`;
         } else {
-          // Voter: go to elections page
-          navigate('/voter-dashboard');
+          // ✅ Voter: redirect to /elections (not /voter-dashboard)
+          navigate('/elections');
         }
       } else {
         setApiError(result.message || 'Login failed');
       }
     } catch (error) {
       console.error('Login error:', error);
+      console.error('Error response:', error.response?.data);
       setApiError(error.response?.data?.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
@@ -71,11 +68,9 @@ export default function Login() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center p-4 overflow-hidden">
-      {/* Background Image */}
       <div className="absolute inset-0 voter-bg" />
       <div className="absolute inset-0 voter-overlay" />
 
-      {/* Card */}
       <div className="relative w-full max-w-[90%] sm:max-w-md md:max-w-lg neumorphic-card p-6 sm:p-8 z-10">
         <h2 className="text-3xl sm:text-4xl font-bold text-center text-[#1e3a8a] mb-2">Welcome Back</h2>
         <p className="text-center text-[#1e3a8a]/70 text-sm sm:text-base mb-6 sm:mb-8">Sign in to continue</p>

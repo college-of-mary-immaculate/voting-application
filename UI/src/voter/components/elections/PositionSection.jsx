@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import CandidateCard from './CandidateCard';
 
 export default function PositionSection({
@@ -12,23 +12,27 @@ export default function PositionSection({
   setValidationMessage,
 }) {
   const isMulti = maxVotes > 1;
-  
-  // Filter out withdrawn candidates based on status
-  const activeCandidates = candidates.filter(candidate => {
-    // Check if candidate has status field and it's not Withdrawn
-    if (candidate.status) {
-      return candidate.status !== 'Withdrawn' && candidate.status !== 'withdrawn';
-    }
-    // If no status field, assume active (but also check if it's the withdrawn candidate with name 's')
-    if (candidate.name === 's' && candidate.party === 's') {
-      return false; // Filter out the withdrawn test candidate
-    }
-    return true;
-  });
-  
   const safeSelectedIds = isMulti 
     ? (Array.isArray(selectedIds) ? selectedIds : [])
     : selectedIds;
+
+  // Animation: fade‑in when section enters viewport
+  const [visible, setVisible] = useState(false);
+  const sectionRef = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    if (sectionRef.current) observer.observe(sectionRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const handleToggle = (candidateId) => {
     if (disabled) return;
@@ -53,46 +57,60 @@ export default function PositionSection({
     }
   };
 
+  // Filter out withdrawn candidates
+  const activeCandidates = candidates.filter(candidate => {
+    if (candidate.status) {
+      return candidate.status !== 'Withdrawn' && candidate.status !== 'withdrawn';
+    }
+    // Remove any test candidate named 's'
+    if (candidate.name === 's' && candidate.party === 's') {
+      return false;
+    }
+    return true;
+  });
+
   return (
-    <div className="mb-8 sm:mb-12">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3">
-        <h2 className="text-xl sm:text-2xl font-light text-[#0f4c5c]">
-          {title} {isMulti && <span className="text-xs sm:text-sm font-normal text-[#5a6b7a] ml-2">Choose up to {maxVotes}</span>}
-        </h2>
+    <div ref={sectionRef} className="mb-10 sm:mb-12">
+      {/* Header with modern title and accent */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 sm:mb-6 gap-3">
+        <div className="flex items-center gap-2">
+          {/* Decorative accent line */}
+          <div className="w-1 h-6 sm:h-8 bg-gradient-to-b from-indigo-500 to-purple-500 rounded-full"></div>
+          <h2 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
+            {title}
+          </h2>
+          {isMulti && (
+            <span className="text-sm font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full ml-2">
+              Choose up to {maxVotes}
+            </span>
+          )}
+        </div>
         
         {isMulti && (
-          <div className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium shadow-md ${
+          <div className={`px-4 py-1.5 rounded-full text-sm font-medium shadow-md transition-all ${
             safeSelectedIds.length === maxVotes
-              ? 'bg-green-500 text-white'
-              : 'bg-[#f4a261] text-white'
+              ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white'
+              : 'bg-gradient-to-r from-[#f4a261] to-[#e76f51] text-white'
           }`}>
             {safeSelectedIds.length} / {maxVotes} selected
           </div>
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-        {activeCandidates.map((candidate) => {
-          // Get the correct ID field
+      {/* Candidate grid – responsive columns */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
+        {activeCandidates.map((candidate, idx) => {
           const candidateId = candidate.candidate_id || candidate.id;
-          
-          // Get the name (using 'name' field since that's what's in the logs)
           const candidateName = candidate.full_name || candidate.name || 'Unnamed Candidate';
-          
-          // Get the party (using 'party' field since that's what's in the logs)
           const candidateParty = candidate.party_name || candidate.party || 'Independent';
-          
-          // Get the photo URL
           const candidatePhoto = candidate.photo_url || candidate.image;
           
-          // Check if selected using the correct ID
           const isSelected = isMulti
             ? safeSelectedIds.includes(candidateId)
             : safeSelectedIds === candidateId;
           
           const isDisabled = disabled || (isMulti && !isSelected && safeSelectedIds.length >= maxVotes);
           
-          // Create formatted candidate for CandidateCard
           const formattedCandidate = {
             candidate_id: candidateId,
             full_name: candidateName,
@@ -100,14 +118,24 @@ export default function PositionSection({
             photo_url: candidatePhoto,
           };
           
+          // Staggered animation delay
+          const animationDelay = `${idx * 50}ms`;
+          
           return (
-            <CandidateCard
+            <div
               key={candidateId}
-              candidate={formattedCandidate}
-              isSelected={isSelected}
-              onToggle={() => handleToggle(candidateId)}
-              disabled={isDisabled}
-            />
+              className={`transform transition-all duration-500 ${
+                visible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+              }`}
+              style={{ transitionDelay: animationDelay }}
+            >
+              <CandidateCard
+                candidate={formattedCandidate}
+                isSelected={isSelected}
+                onToggle={() => handleToggle(candidateId)}
+                disabled={isDisabled}
+              />
+            </div>
           );
         })}
       </div>

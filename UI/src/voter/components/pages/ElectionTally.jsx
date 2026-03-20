@@ -1,10 +1,9 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { getElectionResults, getImageUrl } from '../../services/api';
 import socket from '../../utils/socket';
 import CountdownTimer from '../elections/CountdownTimer';
 
-// Helper to format numbers with commas
 const formatNumber = (num) => num?.toLocaleString() || '0';
 
 const barGradients = [
@@ -29,51 +28,62 @@ const getInitials = (name) => {
     .slice(0, 2);
 };
 
-// Custom hook for animated count-up
-const useAnimatedNumber = (target, duration = 800) => {
-  const [value, setValue] = useState(0);
-  const previousTarget = useRef(target);
+// Custom hook for count‑up animation
+const useCountUp = (targetValue, duration = 800) => {
+  const [current, setCurrent] = useState(0);
+  const targetRef = useRef(targetValue);
   const animationRef = useRef(null);
+  const startTimeRef = useRef(null);
+  const startValueRef = useRef(0);
+
+  const animate = useCallback((timestamp) => {
+    if (!startTimeRef.current) startTimeRef.current = timestamp;
+    const elapsed = timestamp - startTimeRef.current;
+    const progress = Math.min(1, elapsed / duration);
+    const newValue = startValueRef.current + (targetRef.current - startValueRef.current) * progress;
+    setCurrent(Math.floor(newValue));
+    if (progress < 1) {
+      animationRef.current = requestAnimationFrame(animate);
+    }
+  }, [duration]);
 
   useEffect(() => {
-    if (previousTarget.current === target) return;
-    previousTarget.current = target;
-
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
-    }
-
-    const startTime = performance.now();
-    const startValue = value;
-    const endValue = target;
-
-    const update = (now) => {
-      const elapsed = now - startTime;
-      const progress = Math.min(1, elapsed / duration);
-      const currentValue = Math.floor(startValue + (endValue - startValue) * progress);
-      setValue(currentValue);
-      if (progress < 1) {
-        animationRef.current = requestAnimationFrame(update);
-      } else {
-        setValue(endValue);
-        animationRef.current = null;
-      }
-    };
-
-    animationRef.current = requestAnimationFrame(update);
-
+    // When target changes, start animation from current displayed value
+    startValueRef.current = current;
+    targetRef.current = targetValue;
+    if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    startTimeRef.current = null;
+    animationRef.current = requestAnimationFrame(animate);
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, [target, duration]);
+  }, [targetValue, animate, current]);
 
-  return value;
+  // Set initial value to 0 when component mounts (but we'll start animation from 0)
+  useEffect(() => {
+    setCurrent(0);
+    startValueRef.current = 0;
+    targetRef.current = targetValue;
+    startTimeRef.current = null;
+    if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    animationRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return current;
 };
 
-// AnimatedNumber component
-const AnimatedNumber = ({ value, className }) => {
-  const animatedValue = useAnimatedNumber(value);
-  return <span className={className}>{formatNumber(animatedValue)}</span>;
+// Small component to display a number with count‑up
+const AnimatedVoteCount = ({ votes, isWinner }) => {
+  const animatedValue = useCountUp(votes, 500);
+  return (
+    <span className={`text-sm sm:text-lg font-bold ${isWinner ? 'text-amber-500' : 'text-indigo-600'}`}>
+      {formatNumber(animatedValue)}
+    </span>
+  );
 };
 
 export default function ElectionTally() {
@@ -83,46 +93,46 @@ export default function ElectionTally() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [totalVotes, setTotalVotes] = useState(0);
-  const [pulsingCandidate, setPulsingCandidate] = useState(null);
-  const [electionState, setElectionState] = useState({
-    isActive: false,
-    isEnded: false,
-    isNotStarted: false
-  });
+  const [prevResults, setPrevResults] = useState([]);
+  const [pulsingCandidates, setPulsingCandidates] = useState({}); // { candidateId: true }
 
   const fetchResults = async () => {
     try {
       const res = await getElectionResults(electionId);
       const resultsData = res.data.results || [];
+      setPrevResults(results); // store previous before updating
       setResults(resultsData);
       setElection(res.data.election);
       const total = resultsData.reduce((acc, pos) => 
         acc + pos.candidates.reduce((sum, c) => sum + (c.votes || 0), 0), 0
       );
       setTotalVotes(total);
-      
-      // Check election state if we have start and end times
-      if (res.data.election) {
-        const parseMySQLDate = (mysqlDateTime) => {
-          if (!mysqlDateTime) return null;
-          if (mysqlDateTime.includes(' ')) {
-            const [datePart, timePart] = mysqlDateTime.split(' ');
-            const [year, month, day] = datePart.split('-');
-            const [hour, minute, second] = timePart.split(':');
-            return new Date(Date.UTC(year, month - 1, day, hour - 8, minute, second));
-          }
-          return new Date(mysqlDateTime);
-        };
-        
-        const start = parseMySQLDate(res.data.election.start_at);
-        const end = parseMySQLDate(res.data.election.end_at);
-        const now = new Date();
-        
-        setElectionState({
-          isActive: now >= start && now <= end,
-          isEnded: now > end,
-          isNotStarted: now < start
+
+      // Detect which candidates increased their votes
+      const newPulses = {};
+      if (prevResults.length > 0) {
+        // Create a map of candidate votes from previous results
+        const prevVotes = new Map();
+        prevResults.forEach(pos => {
+          pos.candidates.forEach(c => {
+            prevVotes.set(c.candidate_id, c.votes || 0);
+          });
         });
+        resultsData.forEach(pos => {
+          pos.candidates.forEach(c => {
+            const prevVote = prevVotes.get(c.candidate_id) || 0;
+            if (c.votes > prevVote) {
+              newPulses[c.candidate_id] = true;
+            }
+          });
+        });
+      }
+      if (Object.keys(newPulses).length > 0) {
+        setPulsingCandidates(newPulses);
+        // Clear pulsing after 500ms
+        setTimeout(() => {
+          setPulsingCandidates({});
+        }, 500);
       }
     } catch (err) {
       console.error('Failed to fetch results:', err);
@@ -135,35 +145,11 @@ export default function ElectionTally() {
   useEffect(() => {
     fetchResults();
     socket.emit('joinElection', parseInt(electionId));
-    socket.on('voteUpdate', () => {
-      fetchResults();
-    });
+    socket.on('voteUpdate', fetchResults);
     return () => {
       socket.off('voteUpdate');
     };
   }, [electionId]);
-
-  const prevResultsRef = useRef([]);
-  useEffect(() => {
-    if (prevResultsRef.current.length === 0) {
-      prevResultsRef.current = results;
-      return;
-    }
-    const prevMap = new Map();
-    prevResultsRef.current.forEach(pos => {
-      pos.candidates.forEach(c => prevMap.set(c.candidate_id, c.votes));
-    });
-    for (const pos of results) {
-      for (const c of pos.candidates) {
-        const prev = prevMap.get(c.candidate_id) || 0;
-        if (c.votes > prev) {
-          setPulsingCandidate(c.candidate_id);
-          setTimeout(() => setPulsingCandidate(null), 600);
-        }
-      }
-    }
-    prevResultsRef.current = results;
-  }, [results]);
 
   if (loading) {
     return (
@@ -206,26 +192,17 @@ export default function ElectionTally() {
     );
   }
 
-  // Determine status message
-  let statusMessage = '';
-  let statusColor = '';
-  if (electionState.isNotStarted) {
-    statusMessage = '⏰ Election Not Started Yet';
-    statusColor = 'bg-amber-50 border-amber-200 text-amber-700';
-  } else if (electionState.isActive) {
-    statusMessage = '🟢 Live Results - Votes Update in Real Time';
-    statusColor = 'bg-green-50 border-green-200 text-green-700';
-  } else if (electionState.isEnded) {
-    statusMessage = '🏁 Final Results - Election Concluded';
-    statusColor = 'bg-gray-50 border-gray-200 text-gray-700';
-  }
-
   return (
     <div className="min-h-screen relative py-12 px-4 sm:px-6 lg:px-8">
-      <div className="absolute inset-0 bg-cover bg-center bg-no-repeat blur-sm" style={{ backgroundImage: "url('https://img.freepik.com/premium-vector/philippines-election-banner-background-template-your-design_97886-9564.jpg')" }}></div>
+      {/* Background image with subtle blur */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat blur-sm"
+        style={{ backgroundImage: "url('https://img.freepik.com/premium-vector/philippines-election-banner-background-template-your-design_97886-9564.jpg')" }}
+      ></div>
       <div className="absolute inset-0 bg-black/20"></div>
 
       <div className="relative z-10 max-w-7xl mx-auto">
+        {/* Header */}
         <div className="mb-12 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
           <div>
             <h1 className="text-4xl sm:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 mb-3 drop-shadow-lg">
@@ -234,28 +211,18 @@ export default function ElectionTally() {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
                 <div className="w-3 h-3 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"></div>
-                <span className="text-white text-sm font-medium">Total votes: {formatNumber(totalVotes)}</span>
+                <span className="text-white text-sm font-medium">Total votes: {totalVotes.toLocaleString()}</span>
               </div>
             </div>
           </div>
-          {election?.start_at && election?.end_at && (
+          {election?.end_at && (
             <div className="bg-white/70 backdrop-blur-md rounded-xl px-6 py-3 shadow-lg border border-white/50">
-              <CountdownTimer 
-                startTime={election.start_at}
-                endTime={election.end_at} 
-                serverTime={new Date().toISOString()} 
-              />
+              <CountdownTimer endTime={election.end_at} serverTime={new Date().toISOString()} />
             </div>
           )}
         </div>
 
-        {/* Status Banner */}
-        {statusMessage && (
-          <div className={`mb-8 ${statusColor} border rounded-xl px-4 py-3 text-center backdrop-blur-sm`}>
-            <span className="font-medium">{statusMessage}</span>
-          </div>
-        )}
-
+        {/* Results by position */}
         <div className="space-y-12">
           {results.map((position) => {
             const candidates = position.candidates || [];
@@ -267,6 +234,8 @@ export default function ElectionTally() {
               <div key={position.position_id} className="relative group">
                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 rounded-3xl blur-2xl opacity-20 group-hover:opacity-30 transition-opacity duration-500"></div>
                 <div className="relative bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl overflow-hidden border border-white/50 transition-all duration-300 hover:shadow-3xl">
+                  
+                  {/* Position header */}
                   <div className="relative bg-gradient-to-r from-indigo-600 to-purple-600 px-6 sm:px-8 py-4">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                       <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-3">
@@ -276,45 +245,47 @@ export default function ElectionTally() {
                         </span>
                       </h2>
                       <div className="text-white/80 text-sm font-medium bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm">
-                        Total votes: {formatNumber(positionTotal)}
+                        Total votes: {positionTotal.toLocaleString()}
                       </div>
                     </div>
                   </div>
 
+                  {/* Scrollable bar chart container */}
                   <div className="p-6 sm:p-8 overflow-x-auto custom-scrollbar">
                     <div className="flex justify-start gap-6 sm:gap-8 md:gap-10 min-w-max">
                       {candidates.map((candidate, idx) => {
                         const votes = candidate.votes || 0;
                         const percentage = maxVotes > 0 ? (votes / maxVotes) * 100 : 0;
-                        const isWinner = votes === maxVotes && maxVotes > 0 && !electionState.isNotStarted;
+                        const isWinner = votes === maxVotes && maxVotes > 0;
                         const barGradient = getBarGradient(idx);
                         const photoUrl = candidate.photo_url;
                         const fullUrl = photoUrl ? getImageUrl(photoUrl) : null;
                         const initials = getInitials(candidate.full_name);
-                        const isPulsing = pulsingCandidate === candidate.candidate_id;
+                        const isPulsing = pulsingCandidates[candidate.candidate_id];
 
                         return (
                           <div
                             key={candidate.candidate_id}
-                            className={`flex flex-col items-center text-center w-24 sm:w-28 flex-shrink-0 transition-all duration-300 ${
-                              isPulsing ? 'animate-pulse' : ''
-                            }`}
+                            className="flex flex-col items-center text-center w-24 sm:w-28 flex-shrink-0"
                           >
+                            {/* Vertical bar container */}
                             <div className="relative w-full h-36 sm:h-40 mb-3 flex flex-col justify-end overflow-visible">
                               <div
                                 className={`w-full rounded-t-lg sm:rounded-t-xl bg-gradient-to-t ${barGradient} transition-all duration-700 ease-out shadow-inner ${
-                                  isPulsing ? 'ring-2 ring-yellow-400 ring-opacity-50' : ''
+                                  isPulsing ? 'animate-pulse' : ''
                                 }`}
                                 style={{ height: `${percentage}%`, minHeight: votes > 0 ? '4px' : '0px' }}
                               />
-                              {isWinner && !electionState.isNotStarted && (
+                              {isWinner && (
                                 <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 z-20">
                                   <div className="text-2xl sm:text-3xl animate-bounce drop-shadow-lg">👑</div>
                                 </div>
                               )}
                             </div>
 
+                            {/* Candidate info card with photo */}
                             <div className="w-full bg-white/80 backdrop-blur-sm rounded-xl shadow-md p-2 sm:p-3 border border-indigo-100 transition-all hover:shadow-lg hover:bg-white">
+                              {/* Photo */}
                               <div className="flex justify-center mb-1">
                                 {fullUrl ? (
                                   <img
@@ -344,7 +315,7 @@ export default function ElectionTally() {
                                 </div>
                               )}
                               <div className="mt-1 sm:mt-2 flex items-baseline justify-center gap-0.5">
-                                <AnimatedNumber value={votes} className={`text-sm sm:text-lg font-bold ${isWinner && !electionState.isNotStarted ? 'text-amber-500' : 'text-indigo-600'}`} />
+                                <AnimatedVoteCount votes={votes} isWinner={isWinner} />
                                 <span className="text-[10px] text-gray-500">votes</span>
                               </div>
                             </div>
@@ -354,7 +325,8 @@ export default function ElectionTally() {
                     </div>
                   </div>
 
-                  {isTie && maxVotes > 0 && !electionState.isNotStarted && (
+                  {/* Tie indicator */}
+                  {isTie && maxVotes > 0 && (
                     <div className="bg-gradient-to-r from-amber-50 to-amber-100 px-6 py-2 text-center text-xs text-amber-800 border-t border-amber-200">
                       🏆 Tie for the lead! Multiple candidates share the highest votes.
                     </div>
@@ -365,6 +337,7 @@ export default function ElectionTally() {
           })}
         </div>
 
+        {/* Footer */}
         <div className="mt-12 text-center text-sm text-white/80 border-t border-white/20 pt-8">
           <p className="flex items-center justify-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-green-500"></span>
@@ -389,12 +362,17 @@ export default function ElectionTally() {
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: rgba(99, 102, 241, 0.8);
         }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.8; transform: scale(1.02); }
-        }
         .animate-pulse {
-          animation: pulse 0.5s ease-in-out;
+          animation: pulse 0.5s cubic-bezier(0.4, 0, 0.6, 1);
+        }
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.7;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.5);
+          }
         }
       `}</style>
     </div>

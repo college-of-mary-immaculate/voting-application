@@ -135,6 +135,7 @@ export default function BarangayElection() {
       onSubmitVotes={handleSubmit}
       endTime={election.end_at}
       serverTime={new Date().toISOString()}
+      electionTypeId={election.election_type_id} 
     />
   );
 }

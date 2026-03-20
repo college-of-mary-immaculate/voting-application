@@ -103,7 +103,7 @@ export default function NationalElection() {
       });
 
       await castVote({ election_id: election.election_id, votes });
-      // Pagkatapos mag-vote, pumunta sa tally
+      // Pagkatapos mag-vote, pupunta sa tally
       navigate(`/elections/tally/${electionId}`);
     } catch (err) {
       console.error("Vote submission failed:", err);
@@ -140,6 +140,7 @@ export default function NationalElection() {
       onSubmitVotes={handleSubmit}
       endTime={election.end_at}
       serverTime={new Date().toISOString()}
+      electionTypeId={election.election_type_id} 
     />
   );
 }

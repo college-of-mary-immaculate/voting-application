@@ -135,6 +135,7 @@ export default function CustomElection() {
       onSubmitVotes={handleSubmit}
       endTime={election.end_at}
       serverTime={new Date().toISOString()}
+      electionTypeId={election.election_type_id} 
     />
   );
 }

@@ -4,6 +4,14 @@ import ConfirmationModal from "./ConfirmationModal";
 import SuccessToast from "./SuccessToast";
 import CountdownTimer from "./CountdownTimer";
 
+// Background images per election type – no generic fallback
+const backgroundImages = {
+  1: "https://tse1.mm.bing.net/th/id/OIP.JQ4NpNKqdQvSOI2NjFc6BgHaFV?rs=1&pid=ImgDetMain&o=7&rm=3", // National
+  2: "https://www.rappler.com/tachyon/2023/02/imho-community-governance.png",                     // Barangay
+  3: "https://www.shutterstock.com/image-vector/students-who-vote-class-gain-260nw-2421182715.jpg", // Class
+  4: "https://tse2.mm.bing.net/th/id/OIP.EGnBKA1h5l0Pxy1hq96fhwHaEJ?rs=1&pid=ImgDetMain&o=7&rm=3", // Custom
+};
+
 export default function ElectionContainer({
   electionName,
   electionTagline,
@@ -11,6 +19,7 @@ export default function ElectionContainer({
   onSubmitVotes,
   endTime,
   serverTime,
+  electionTypeId, // required – used to select the background image
 }) {
   const [votes, setVotes] = useState({});
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -19,8 +28,12 @@ export default function ElectionContainer({
   const [hasVoted, setHasVoted] = useState(false);
   const [validationMessage, setValidationMessage] = useState("");
   const [isExpired, setIsExpired] = useState(false);
+  const [fadeIn, setFadeIn] = useState(false);
 
-  // Check if election has ended
+  useEffect(() => {
+    setFadeIn(true);
+  }, []);
+
   useEffect(() => {
     if (!endTime) return;
     const checkExpiry = () => {
@@ -74,25 +87,16 @@ export default function ElectionContainer({
   const handleCancel = () => setShowConfirmModal(false);
   const handleEdit = () => setShowConfirmModal(false);
 
-  // FIX: Map candidates to the expected structure for the confirmation modal
-  // In ElectionContainer, update the selectedPositions mapping:
   const selectedPositions = positions.map((pos) => {
     const selected = votes[pos.id];
     if (pos.maxVotes > 1) {
       const selectedArray = Array.isArray(selected) ? selected : [];
       const selectedCandidates = selectedArray
         .map((id) => {
-          // Find candidate by id (since your data uses 'id' field)
           const candidate = pos.candidates.find(
-            (c) => c.candidate_id === id || c.id === id,
+            (c) => c.candidate_id === id || c.id === id
           );
-          // Check if candidate exists and is not withdrawn
-          if (
-            candidate &&
-            candidate.status !== "Withdrawn" &&
-            candidate.status !== "withdrawn" &&
-            candidate.name !== "s"
-          ) {
+          if (candidate && candidate.status !== "Withdrawn" && candidate.status !== "withdrawn") {
             return {
               id: candidate.candidate_id || candidate.id,
               full_name: candidate.full_name || candidate.name,
@@ -110,16 +114,12 @@ export default function ElectionContainer({
       };
     } else {
       const candidate = selected
-        ? pos.candidates.find(
-            (c) => c.candidate_id === selected || c.id === selected,
-          )
+        ? pos.candidates.find((c) => c.candidate_id === selected || c.id === selected)
         : null;
-      // Only include if candidate is active and not withdrawn
       const validCandidate =
         candidate &&
         candidate.status !== "Withdrawn" &&
-        candidate.status !== "withdrawn" &&
-        candidate.name !== "s"
+        candidate.status !== "withdrawn"
           ? {
               id: candidate.candidate_id || candidate.id,
               full_name: candidate.full_name || candidate.name,
@@ -137,42 +137,33 @@ export default function ElectionContainer({
 
   const disabled = hasVoted || isExpired;
 
+  // Select background based on electionTypeId – if missing, no image is shown
+  const backgroundUrl = electionTypeId && backgroundImages[electionTypeId]
+    ? backgroundImages[electionTypeId]
+    : null;
+
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {/* Background */}
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage:
-            "url('https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?q=80&w=2070&auto=format&fit=crop')",
-        }}
-      />
-      <div className="absolute inset-0 bg-black/40" />
-      <div
-        className="absolute inset-0 opacity-10 bg-repeat"
-        style={{
-          backgroundImage:
-            "url('https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Flag_of_the_Philippines.svg/1280px-Flag_of_the_Philippines.svg.png')",
-          backgroundSize: "200px 100px",
-          backgroundBlendMode: "overlay",
-        }}
-      />
-
-      {validationMessage && (
-        <div className="fixed top-5 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-xl shadow-2xl z-50 animate-slideDown text-sm sm:text-base">
-          ⚠️ {validationMessage}
-        </div>
+      {/* Background image – only shown if a matching type exists */}
+      {backgroundUrl && (
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat blur-sm"
+          style={{ backgroundImage: `url(${backgroundUrl})` }}
+        />
       )}
+      <div className="absolute inset-0 bg-black/20" />
 
-      <div className="relative z-10 min-h-screen bg-gradient-to-br from-[#f8f9fa]/80 via-white/80 to-[#e9ecef]/80 backdrop-blur-sm py-6 sm:py-10 px-4">
-        <div className="absolute top-0 left-0 w-96 h-96 bg-[#0f4c5c] opacity-20 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#f4a261] opacity-20 rounded-full blur-3xl"></div>
-
-        <div className="relative max-w-7xl mx-auto">
-          {/* Header - responsive stacking */}
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
+      {/* Main content */}
+      <div
+        className={`relative z-10 min-h-screen py-6 sm:py-10 px-4 transition-opacity duration-700 ${
+          fadeIn ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="mb-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
             <div>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-light text-white tracking-tight drop-shadow-lg">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white drop-shadow-lg">
                 {electionName}
               </h1>
               <p className="text-white/90 text-base sm:text-lg mt-2 drop-shadow">
@@ -181,21 +172,21 @@ export default function ElectionContainer({
             </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full lg:w-auto">
               {endTime && (
-                <CountdownTimer endTime={endTime} serverTime={serverTime} />
+                <div className="bg-white/20 backdrop-blur-md rounded-xl px-4 py-2 shadow-lg border border-white/30">
+                  <CountdownTimer endTime={endTime} serverTime={serverTime} />
+                </div>
               )}
-              <div className="bg-white/70 backdrop-blur-md rounded-3xl p-4 sm:p-5 shadow-lg border border-white/50 w-full sm:w-auto overflow-x-auto">
+              <div className="bg-white/20 backdrop-blur-md rounded-3xl p-4 shadow-lg border border-white/30 w-full sm:w-auto overflow-x-auto">
                 <div className="flex gap-4 sm:gap-8 min-w-max">
                   {positions.map((pos) => (
                     <div key={pos.id} className="text-center">
-                      <div className="text-xs uppercase tracking-wider text-[#5a6b7a]">
+                      <div className="text-xs uppercase tracking-wider text-white/80">
                         {pos.shortTitle || pos.title}
                       </div>
-                      <div className="text-xl sm:text-2xl font-semibold text-[#0f4c5c] mt-1">
+                      <div className="text-xl sm:text-2xl font-semibold text-white mt-1">
                         {pos.maxVotes > 1
                           ? `${votes[pos.id]?.length || 0}/${pos.maxVotes}`
-                          : votes[pos.id]
-                            ? "✓"
-                            : "—"}
+                          : votes[pos.id] ? "✓" : "—"}
                       </div>
                     </div>
                   ))}
@@ -205,7 +196,6 @@ export default function ElectionContainer({
           </div>
 
           <SuccessToast show={showSuccessToast} voteCount={voteCount} />
-
           <ConfirmationModal
             isOpen={showConfirmModal}
             onCancel={handleCancel}
@@ -214,43 +204,64 @@ export default function ElectionContainer({
             selectedPositions={selectedPositions}
           />
 
-          {positions.map((pos) => (
-            <PositionSection
-              key={pos.id}
-              id={pos.id}
-              title={pos.title}
-              candidates={pos.candidates.map((c) => ({
-                id: c.candidate_id || c.id,
-                name: c.full_name || c.name,
-                party: c.party_name || c.party,
-                photo_url: c.photo_url || c.image,
-                candidate_id: c.candidate_id,
-                full_name: c.full_name,
-                party_name: c.party_name,
-              }))}
-              selectedIds={votes[pos.id] || (pos.maxVotes > 1 ? [] : null)}
-              onSelect={handleSelect(pos.id, pos.maxVotes > 1)}
-              maxVotes={pos.maxVotes}
-              disabled={disabled}
-              setValidationMessage={setValidationMessage}
-            />
-          ))}
+          {/* Position sections */}
+          <div className="space-y-8 sm:space-y-10">
+            {positions.map((pos, idx) => (
+              <div
+                key={pos.id}
+                className="transform transition-all duration-500 hover:scale-[1.01]"
+                style={{ transitionDelay: `${idx * 100}ms` }}
+              >
+                <div className="bg-white/90 backdrop-blur-md rounded-3xl shadow-xl overflow-hidden border border-white/50">
+                  <PositionSection
+                    id={pos.id}
+                    title={pos.title}
+                    candidates={pos.candidates.map((c) => ({
+                      id: c.candidate_id || c.id,
+                      name: c.full_name || c.name,
+                      party: c.party_name || c.party,
+                      photo_url: c.photo_url || c.image,
+                      candidate_id: c.candidate_id,
+                      full_name: c.full_name,
+                      party_name: c.party_name,
+                    }))}
+                    selectedIds={votes[pos.id] || (pos.maxVotes > 1 ? [] : null)}
+                    onSelect={handleSelect(pos.id, pos.maxVotes > 1)}
+                    maxVotes={pos.maxVotes}
+                    disabled={disabled}
+                    setValidationMessage={setValidationMessage}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
 
-          <div className="flex justify-center mt-10">
+          {/* Submit button */}
+          <div className="flex justify-center mt-12">
             <button
               onClick={handleSubmitClick}
               disabled={disabled}
-              className={`group text-base sm:text-lg font-medium py-3 sm:py-4 px-10 sm:px-14 rounded-full transition-all duration-300 transform hover:scale-105 ${
-                disabled
-                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                  : "bg-[#0f4c5c] text-white shadow-xl hover:shadow-2xl hover:bg-[#1a6b7f]"
+              className={`group relative inline-flex items-center justify-center px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-lg font-semibold rounded-full shadow-lg hover:shadow-xl transform transition-all duration-300 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                disabled ? "opacity-50 cursor-not-allowed" : ""
               }`}
             >
-              {disabled
-                ? isExpired
-                  ? "Election Ended"
-                  : "Vote Submitted"
-                : "Review & Submit"}
+              <span className="relative z-10">
+                {disabled
+                  ? isExpired
+                    ? "Election Ended"
+                    : "Vote Submitted"
+                  : "Review & Submit"}
+              </span>
+              {!disabled && !isExpired && (
+                <svg
+                  className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              )}
             </button>
           </div>
 
@@ -260,7 +271,7 @@ export default function ElectionContainer({
             </p>
           )}
           {hasVoted && !isExpired && (
-            <p className="text-center text-[#2ecc71] mt-6 font-medium animate-pulse drop-shadow">
+            <p className="text-center text-green-400 mt-6 font-medium animate-pulse drop-shadow">
               Thank you for participating!
             </p>
           )}

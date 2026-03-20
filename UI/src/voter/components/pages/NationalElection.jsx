@@ -1,91 +1,113 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getElections, getCandidates, isAuthenticated, castVote } from '../../services/api';
-import ElectionContainer from '../elections/ElectionContainer';
-import { processElectionData } from '../../utils/electionHelpers';
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  getElections,
+  getCandidates,
+  isAuthenticated,
+  castVote,
+} from "../../services/api";
+import ElectionContainer from "../elections/ElectionContainer";
+import { processElectionData } from "../../utils/electionHelpers";
 
 export default function NationalElection() {
+  const { electionId } = useParams(); // Kunin ang ID mula sa URL
   const navigate = useNavigate();
+
   const [positions, setPositions] = useState([]);
-  const [electionId, setElectionId] = useState(null);
-  const [election, setElection] = useState(null); // ✅ ADDED
+  const [election, setElection] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!isAuthenticated()) {
-      navigate('/login');
+      navigate("/login");
     }
   }, [navigate]);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchElection = async () => {
       try {
         setLoading(true);
-        setError('');
+        setError("");
 
+        // Kunin ang lahat ng assigned elections
         const electionsRes = await getElections();
-        const electionsData = electionsRes.data.data || [];
-        
-        const elections = Array.isArray(electionsData)
-          ? electionsData
-          : [electionsData];
+        const electionsData = electionsRes.data?.data || [];
 
-        const nationalElection = elections.find(e => e.election_type_id === 1 && e.status !== 'Closed');
-        if (!nationalElection) {
-          setError('No active national election found.');
+        // Hanapin ang election na may tugmang ID
+        const foundElection = electionsData.find(
+          (e) => e.election_id === parseInt(electionId)
+        );
+
+        if (!foundElection) {
+          setError("Election not found or you are not assigned to it.");
           setLoading(false);
           return;
         }
 
-        setElection(nationalElection); // ✅ STORE IT
+        // Kung nakaboto na, i-redirect sa tally
+        if (foundElection.has_voted) {
+          navigate(`/elections/tally/${electionId}`);
+          return;
+        }
 
+        setElection(foundElection);
+
+        // Kunin ang candidates
         const candidatesRes = await getCandidates();
-        const allCandidates = candidatesRes.data.data || [];
-        const electionCandidates = allCandidates.filter(c => c.election_id === nationalElection.election_id);
+        const allCandidates = candidatesRes.data?.data || [];
+        const electionCandidates = allCandidates.filter(
+          (c) => c.election_id === foundElection.election_id
+        );
 
-        const { electionId, positions } = processElectionData(nationalElection, electionCandidates);
-        setElectionId(electionId);
+        const { positions } = processElectionData(foundElection, electionCandidates);
         setPositions(positions);
       } catch (err) {
-        console.error('Failed to load election data:', err);
-        setError('Failed to load election data. Please try again.');
+        console.error("Failed to load election data:", err);
+        setError("Failed to load election data. Please try again.");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
-  }, []);
+    fetchElection();
+  }, [electionId, navigate]);
 
   const handleSubmit = async (voteData) => {
     try {
       const votes = [];
-      voteData.forEach(pos => {
+      voteData.forEach((pos) => {
         if (Array.isArray(pos.selected)) {
-          pos.selected.forEach(candidateId => {
+          pos.selected.forEach((candidateId) => {
             const candidate = positions
-              .find(p => p.id === pos.positionId)
-              ?.candidates.find(c => c.id === candidateId);
+              .find((p) => p.id === pos.positionId)
+              ?.candidates.find((c) => c.id === candidateId);
             if (candidate) {
-              votes.push({ position_id: pos.positionId, ballot_number: candidate.ballot_number });
+              votes.push({
+                position_id: pos.positionId,
+                ballot_number: candidate.ballot_number,
+              });
             }
           });
         } else if (pos.selected) {
           const candidate = positions
-            .find(p => p.id === pos.positionId)
-            ?.candidates.find(c => c.id === pos.selected);
+            .find((p) => p.id === pos.positionId)
+            ?.candidates.find((c) => c.id === pos.selected);
           if (candidate) {
-            votes.push({ position_id: pos.positionId, ballot_number: candidate.ballot_number });
+            votes.push({
+              position_id: pos.positionId,
+              ballot_number: candidate.ballot_number,
+            });
           }
         }
       });
 
-      await castVote({ election_id: electionId, votes });
-      return Promise.resolve();
+      await castVote({ election_id: election.election_id, votes });
+      // Pagkatapos mag-vote, pumunta sa tally
+      navigate(`/elections/tally/${electionId}`);
     } catch (err) {
-      console.error('Vote submission failed:', err);
-      console.error('Error response:', err.response?.data);
+      console.error("Vote submission failed:", err);
+      alert(err.response?.data?.message || "Failed to submit vote.");
       throw err;
     }
   };
@@ -93,7 +115,7 @@ export default function NationalElection() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-        <div className="animate-pulse text-2xl text-indigo-600">Loading National Election...</div>
+        <div className="animate-pulse text-2xl text-indigo-600">Loading Election...</div>
       </div>
     );
   }
@@ -108,7 +130,6 @@ export default function NationalElection() {
     );
   }
 
-  // ✅ Prevent crash if election not ready
   if (!election) return null;
 
   return (

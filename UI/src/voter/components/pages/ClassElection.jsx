@@ -1,132 +1,120 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getElections, getCandidates, isAuthenticated, castVote } from '../../services/api';
-import ElectionContainer from '../elections/ElectionContainer';
-import { processElectionData } from '../../utils/electionHelpers';
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  getElections,
+  getCandidates,
+  isAuthenticated,
+  castVote,
+} from "../../services/api";
+import ElectionContainer from "../elections/ElectionContainer";
+import { processElectionData } from "../../utils/electionHelpers";
 
 export default function ClassElection() {
+  const { electionId } = useParams();
   const navigate = useNavigate();
 
   const [positions, setPositions] = useState([]);
-  const [electionId, setElectionId] = useState(null);
-  const [election, setElection] = useState(null); // ✅ NEW
+  const [election, setElection] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
-  // --- Auth check
   useEffect(() => {
     if (!isAuthenticated()) {
-      navigate('/login');
+      navigate("/login");
     }
   }, [navigate]);
 
-  // --- Fetch data
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchElection = async () => {
       try {
         setLoading(true);
-        setError('');
+        setError("");
 
         const electionsRes = await getElections();
-        const electionsData = electionsRes.data.data || [];
+        const electionsData = electionsRes.data?.data || [];
 
-        const elections = Array.isArray(electionsData)
-          ? electionsData
-          : [electionsData];
-
-        // ✅ Find class election
-        const classElection = elections.find(
-          e => e.election_type_id === 3 && e.status !== 'Closed'
+        const foundElection = electionsData.find(
+          (e) => e.election_id === parseInt(electionId)
         );
 
-        if (!classElection) {
-          setError('No active class election found.');
+        if (!foundElection) {
+          setError("Election not found or you are not assigned to it.");
           setLoading(false);
           return;
         }
 
-        setElection(classElection); // ✅ STORE IT
+        if (foundElection.has_voted) {
+          navigate(`/elections/tally/${electionId}`);
+          return;
+        }
 
-        // --- Fetch candidates
+        setElection(foundElection);
+
         const candidatesRes = await getCandidates();
-        const allCandidates = candidatesRes.data.data || [];
-
+        const allCandidates = candidatesRes.data?.data || [];
         const electionCandidates = allCandidates.filter(
-          c => c.election_id === classElection.election_id
+          (c) => c.election_id === foundElection.election_id
         );
 
-        const { electionId, positions } = processElectionData(
-          classElection,
-          electionCandidates
-        );
-
-        setElectionId(electionId);
+        const { positions } = processElectionData(foundElection, electionCandidates);
         setPositions(positions);
       } catch (err) {
-        console.error('Failed to load election data:', err);
-        setError('Failed to load election data. Please try again.');
+        console.error("Failed to load election data:", err);
+        setError("Failed to load election data. Please try again.");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
-  }, []);
+    fetchElection();
+  }, [electionId, navigate]);
 
-  // --- Submit votes
   const handleSubmit = async (voteData) => {
     try {
       const votes = [];
-
-      voteData.forEach(pos => {
+      voteData.forEach((pos) => {
         if (Array.isArray(pos.selected)) {
-          pos.selected.forEach(candidateId => {
+          pos.selected.forEach((candidateId) => {
             const candidate = positions
-              .find(p => p.id === pos.positionId)
-              ?.candidates.find(c => c.id === candidateId);
-
+              .find((p) => p.id === pos.positionId)
+              ?.candidates.find((c) => c.id === candidateId);
             if (candidate) {
               votes.push({
                 position_id: pos.positionId,
-                ballot_number: candidate.ballot_number
+                ballot_number: candidate.ballot_number,
               });
             }
           });
         } else if (pos.selected) {
           const candidate = positions
-            .find(p => p.id === pos.positionId)
-            ?.candidates.find(c => c.id === pos.selected);
-
+            .find((p) => p.id === pos.positionId)
+            ?.candidates.find((c) => c.id === pos.selected);
           if (candidate) {
             votes.push({
               position_id: pos.positionId,
-              ballot_number: candidate.ballot_number
+              ballot_number: candidate.ballot_number,
             });
           }
         }
       });
 
-      await castVote({ election_id: electionId, votes });
-      return Promise.resolve();
+      await castVote({ election_id: election.election_id, votes });
+      navigate(`/elections/tally/${electionId}`);
     } catch (err) {
-      console.error('Vote submission failed:', err);
-      console.error('Error response:', err.response?.data);
+      console.error("Vote submission failed:", err);
+      alert(err.response?.data?.message || "Failed to submit vote.");
       throw err;
     }
   };
 
-  // --- Loading UI
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-        <div className="animate-pulse text-2xl text-indigo-600">
-          Loading Class Election...
-        </div>
+        <div className="animate-pulse text-2xl text-indigo-600">Loading Class Election...</div>
       </div>
     );
   }
 
-  // --- Error UI
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
@@ -137,10 +125,8 @@ export default function ClassElection() {
     );
   }
 
-  // ✅ Prevent crash if election not ready
   if (!election) return null;
 
-  // --- Final UI
   return (
     <ElectionContainer
       electionName={election.election_name}
@@ -148,7 +134,7 @@ export default function ClassElection() {
       positions={positions}
       onSubmitVotes={handleSubmit}
       endTime={election.end_at}
-      serverTime={new Date().toISOString()} 
+      serverTime={new Date().toISOString()}
     />
   );
 }

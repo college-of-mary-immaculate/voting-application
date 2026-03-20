@@ -30,7 +30,6 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
     container_name: voting_backend
     working_dir: /app
     volumes:
@@ -44,11 +43,11 @@ services:
       - ./backend/.env
     command: sh -c "npm install && npm start"
 
-  ui:
+  ui1:
     build:
       context: ./UI
       dockerfile: Dockerfile
-    container_name: voting_ui
+    container_name: voting_ui1
     working_dir: /app
     volumes:
       - ./UI:/app
@@ -59,26 +58,37 @@ services:
       - backend
     command: sh -c "npm install && npm run dev -- --host"
 
-  frontend1:
-    image: nginx:latest
-    container_name: frontend1
+  ui2:
+    build:
+      context: ./UI
+      dockerfile: Dockerfile
+    container_name: voting_ui2
+    working_dir: /app
     volumes:
-      - ./UI/dist:/usr/share/nginx/html
-      - ./nginx/frontend1/default.conf:/etc/nginx/conf.d/default.conf
+      - ./UI:/app
+      - /app/node_modules
+    ports:
+      - "5174:5173"
 
-  frontend2:
-    image: nginx:latest
-    container_name: frontend2
-    volumes:
-      - ./UI/dist:/usr/share/nginx/html
-      - ./nginx/frontend2/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - backend
+    command: sh -c "npm install && npm run dev -- --host"
 
-  frontend3:
-    image: nginx:latest
-    container_name: frontend3
+  ui3:
+    build:
+      context: ./UI
+      dockerfile: Dockerfile
+    container_name: voting_ui3
+    working_dir: /app
     volumes:
-      - ./UI/dist:/usr/share/nginx/html
-      - ./nginx/frontend3/default.conf:/etc/nginx/conf.d/default.conf
+      - ./UI:/app
+      - /app/node_modules
+    ports:
+      - "5175:5173"
+
+    depends_on:
+      - backend
+    command: sh -c "npm install && npm run dev -- --host"
 
   loadbalancer:
     image: nginx:latest
@@ -88,9 +98,7 @@ services:
     ports:
       - "8080:80"
     depends_on:
-      - frontend1
-      - frontend2
-      - frontend3
+      - ui1
 
 volumes:
   master_data:

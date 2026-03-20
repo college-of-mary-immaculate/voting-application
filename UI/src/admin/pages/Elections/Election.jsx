@@ -564,7 +564,7 @@ const uploadPhoto = async () => {
   return (
     <div className="election-container">
       <div className="election-header">
-        <h1 className="election-title">🗳️ Manage Elections</h1>
+        <h1 className="election-title">Manage Elections</h1>
         <p className="election-subtitle">
           Create, edit, and monitor all voting events
         </p>
@@ -574,7 +574,7 @@ const uploadPhoto = async () => {
       <div className="content-card">
         <div className="content-header">
           <h2 className="content-title">
-            {editingId ? "✏️ Edit Election" : "➕ Create New Election"}
+            {editingId ? "Edit Election" : "Create New Election"}
           </h2>
           <button
             className="btn btn-primary"
@@ -584,7 +584,7 @@ const uploadPhoto = async () => {
             }}
             disabled={submitting}
           >
-            {showForm ? "✕ Cancel" : "➕ Add Election"}
+            {showForm ? "Cancel" : "Add Election"}
           </button>
         </div>
 
@@ -592,7 +592,7 @@ const uploadPhoto = async () => {
           <form onSubmit={handleSubmit} className="card-body">
             <div className="form-grid">
               <div className="form-group">
-                <label>📋 Election Type *</label>
+                <label>Election Type *</label>
                 <select
                   name="election_type_id"
                   value={formData.election_type_id}
@@ -609,7 +609,7 @@ const uploadPhoto = async () => {
               </div>
 
               <div className="form-group">
-                <label>🏷️ Election Name *</label>
+                <label>Election Name *</label>
                 <input
                   type="text"
                   name="name"
@@ -622,7 +622,7 @@ const uploadPhoto = async () => {
               </div>
 
               <div className="form-group">
-                <label>⏰ Start Date & Time (Philippines Time) *</label>
+                <label>Start Date & Time (Philippines Time) *</label>
                 <input
                   type="datetime-local"
                   name="start_at"
@@ -635,7 +635,7 @@ const uploadPhoto = async () => {
               </div>
 
               <div className="form-group">
-                <label>⌛ End Date & Time (Philippines Time) *</label>
+                <label>End Date & Time (Philippines Time) *</label>
                 <input
                   type="datetime-local"
                   name="end_at"
@@ -656,7 +656,7 @@ const uploadPhoto = async () => {
                 className="btn btn-success"
                 disabled={submitting}
               >
-                {submitting ? "⏳ Saving..." : editingId ? "✏️ Update Election" : "✅ Create Election"}
+                {submitting ? "Saving..." : editingId ? "Update Election" : "Create Election"}
               </button>
               <button
                 type="button"
@@ -664,7 +664,7 @@ const uploadPhoto = async () => {
                 onClick={resetForm}
                 disabled={submitting}
               >
-                ✕ Cancel
+                Cancel
               </button>
             </div>
           </form>
@@ -674,7 +674,7 @@ const uploadPhoto = async () => {
       {/* Elections List */}
       <div className="content-card">
         <div className="content-header flex justify-between items-center">
-          <h2 className="content-title">📊 Elections List</h2>
+          <h2 className="content-title">Elections List</h2>
           <div className="filter-group">
             <label className="mr-2">Filter by Type:</label>
             <select
@@ -692,12 +692,11 @@ const uploadPhoto = async () => {
         </div>
 
         {loading ? (
-          <div className="loading text-center py-8">⏳ Loading elections...</div>
+          <div className="loading text-center py-8">Loading elections...</div>
         ) : error ? (
           <div className="error-message text-center py-8">{error}</div>
         ) : filteredElections.length === 0 ? (
           <div className="empty-state text-center py-12">
-            <div className="text-6xl mb-4">📭</div>
             <div className="text-xl font-medium mb-2">No elections found</div>
             <div className="text-gray-500">Create your first election to get started</div>
           </div>
@@ -742,14 +741,14 @@ const uploadPhoto = async () => {
                         onClick={() => handleEdit(el)}
                         title="Edit election"
                       >
-                        ✏️
+                        Edit
                       </button>
                       <button
                         className="btn btn-delete btn-sm"
                         onClick={() => handleDelete(el.election_id)}
                         title="Delete election"
                       >
-                        🗑️
+                        Delete
                       </button>
                     </td>
                     <td>
@@ -758,7 +757,7 @@ const uploadPhoto = async () => {
                         onClick={() => openPositionModal(el)}
                         title="Manage positions"
                       >
-                        📋 Positions ({el.positions_count || 0})
+                        Positions ({el.positions_count || 0})
                       </button>
                     </td>
                     <td>
@@ -767,7 +766,7 @@ const uploadPhoto = async () => {
                         onClick={() => openAssignModal(el)}
                         title="Assign voters"
                       >
-                        👥 Assign
+                        Assign
                       </button>
                     </td>
                   </tr>
@@ -784,7 +783,7 @@ const uploadPhoto = async () => {
           <div className="modal position-modal content-card">
             <div className="content-header">
               <div>
-                <h2 className="content-title">📋 Manage Positions</h2>
+                <h2 className="content-title">Manage Positions</h2>
                 <p className="text-sm text-gray-500 mt-1">
                   Election: <span className="font-semibold">{selectedElectionForPositions.election_name}</span>
                 </p>
@@ -796,7 +795,7 @@ const uploadPhoto = async () => {
                   resetPositionForm();
                 }}
               >
-                ✕ Close
+                Close
               </button>
             </div>
 
@@ -804,7 +803,7 @@ const uploadPhoto = async () => {
               {/* Position Form */}
               <div className="form-section mb-6">
                 <h3 className="form-section-title">
-                  {editingPosition ? "✏️ Edit Position" : "➕ Add New Position"}
+                  {editingPosition ? "Edit Position" : "Add New Position"}
                 </h3>
                 <form onSubmit={handlePositionSubmit}>
                   <div className="form-grid-small">
@@ -837,7 +836,7 @@ const uploadPhoto = async () => {
 
                   <div className="form-actions-small mt-3">
                     <button type="submit" className="btn btn-success">
-                      {editingPosition ? "✏️ Update Position" : "✅ Add Position"}
+                      {editingPosition ? "Update Position" : "Add Position"}
                     </button>
                     {editingPosition && (
                       <button
@@ -845,7 +844,7 @@ const uploadPhoto = async () => {
                         className="btn btn-secondary"
                         onClick={resetPositionForm}
                       >
-                        ✕ Cancel
+                        Cancel
                       </button>
                     )}
                   </div>
@@ -854,12 +853,11 @@ const uploadPhoto = async () => {
 
               {/* Positions List */}
               <div className="positions-section">
-                <h3 className="form-section-title">📋 Positions List</h3>
+                <h3 className="form-section-title">Positions List</h3>
                 {positionsLoading ? (
-                  <div className="text-center py-4">⏳ Loading positions...</div>
+                  <div className="text-center py-4">Loading positions...</div>
                 ) : positions.length === 0 ? (
                   <div className="empty-state text-center py-8">
-                    <div className="text-4xl mb-3">📭</div>
                     <div className="font-medium mb-2">No positions added yet</div>
                     <div className="text-gray-500">Add your first position above</div>
                   </div>
@@ -879,21 +877,21 @@ const uploadPhoto = async () => {
                             onClick={() => openCandidateModal(pos)}
                             title="Manage candidates"
                           >
-                            👥 Candidates
+                            Candidates
                           </button>
                           <button
                             className="btn btn-edit btn-sm"
                             onClick={() => handlePositionEdit(pos)}
                             title="Edit position"
                           >
-                            ✏️
+                            Edit
                           </button>
                           <button
                             className="btn btn-delete btn-sm"
                             onClick={() => handlePositionDelete(pos.position_id)}
                             title="Delete position"
                           >
-                            🗑️
+                            Delete
                           </button>
                         </div>
                       </div>
@@ -912,7 +910,7 @@ const uploadPhoto = async () => {
           <div className="modal candidate-modal content-card">
             <div className="content-header">
               <div>
-                <h2 className="content-title">👥 Manage Candidates</h2>
+                <h2 className="content-title">Manage Candidates</h2>
                 <p className="text-sm text-gray-500 mt-1">
                   Position: <span className="font-semibold">{selectedPosition.position_name}</span>
                 </p>
@@ -924,7 +922,7 @@ const uploadPhoto = async () => {
                   resetCandidateForm();
                 }}
               >
-                ✕ Close
+                Close
               </button>
             </div>
 
@@ -932,12 +930,12 @@ const uploadPhoto = async () => {
               {/* Candidate Form */}
               <div className="form-section mb-6">
                 <h3 className="form-section-title">
-                  {editingCandidate ? "✏️ Edit Candidate" : "➕ Add New Candidate"}
+                  {editingCandidate ? "Edit Candidate" : "Add New Candidate"}
                 </h3>
                 <form onSubmit={handleCandidateSubmit}>
                   <div className="form-grid">
                     <div className="form-group">
-                      <label>👤 Full Name *</label>
+                      <label>Full Name *</label>
                       <input
                         type="text"
                         value={candidateForm.full_name}
@@ -948,7 +946,7 @@ const uploadPhoto = async () => {
                     </div>
 
                     <div className="form-group">
-                      <label>🏛️ Party/Partylist</label>
+                      <label>Party/Partylist</label>
                       <input
                         type="text"
                         value={candidateForm.party_name}
@@ -958,18 +956,18 @@ const uploadPhoto = async () => {
                     </div>
 
                     <div className="form-group">
-                      <label>📊 Status</label>
+                      <label>Status</label>
                       <select
                         value={candidateForm.status}
                         onChange={(e) => setCandidateForm({...candidateForm, status: e.target.value})}
                       >
-                        <option value="Active">✅ Active</option>
-                        <option value="Withdrawn">⏸️ Withdrawn</option>
+                        <option value="Active">Active</option>
+                        <option value="Withdrawn">Withdrawn</option>
                       </select>
                     </div>
 
                     <div className="form-group">
-                      <label>📸 Photo</label>
+                      <label>Photo</label>
                       <input
                         type="file"
                         accept="image/*"
@@ -996,7 +994,7 @@ const uploadPhoto = async () => {
                       className="btn btn-success"
                       disabled={uploadingPhoto}
                     >
-                      {uploadingPhoto ? "⏳ Uploading..." : (editingCandidate ? "✏️ Update Candidate" : "✅ Add Candidate")}
+                      {uploadingPhoto ? "Uploading..." : (editingCandidate ? "Update Candidate" : "Add Candidate")}
                     </button>
                     {editingCandidate && (
                       <button
@@ -1004,7 +1002,7 @@ const uploadPhoto = async () => {
                         className="btn btn-secondary"
                         onClick={resetCandidateForm}
                       >
-                        ✕ Cancel
+                        Cancel
                       </button>
                     )}
                   </div>
@@ -1013,12 +1011,11 @@ const uploadPhoto = async () => {
 
               {/* Candidates List */}
               <div className="candidates-section">
-                <h3 className="form-section-title">👥 Candidates List</h3>
+                <h3 className="form-section-title">Candidates List</h3>
                 {candidatesLoading ? (
-                  <div className="text-center py-4">⏳ Loading candidates...</div>
+                  <div className="text-center py-4">Loading candidates...</div>
                 ) : candidates.length === 0 ? (
                   <div className="empty-state text-center py-8">
-                    <div className="text-4xl mb-3">📭</div>
                     <div className="font-medium mb-2">No candidates added yet</div>
                     <div className="text-gray-500">Add your first candidate above</div>
                   </div>
@@ -1050,7 +1047,7 @@ const uploadPhoto = async () => {
                           )}
                           <div className="candidate-status">
                             <span className={`status-badge-small ${candidate.status === 'Active' ? 'active' : 'withdrawn'}`}>
-                              {candidate.status === 'Active' ? '✅ Active' : '⏸️ Withdrawn'}
+                              {candidate.status === 'Active' ? 'Active' : 'Withdrawn'}
                             </span>
                             <span className="candidate-number">
                               #{candidate.ballot_number}
@@ -1063,14 +1060,14 @@ const uploadPhoto = async () => {
                             onClick={() => handleCandidateEdit(candidate)}
                             title="Edit candidate"
                           >
-                            ✏️
+                            Edit
                           </button>
                           <button
                             className="btn btn-delete btn-sm"
                             onClick={() => handleCandidateDelete(candidate.candidate_id)}
                             title="Delete candidate"
                           >
-                            🗑️
+                            Delete
                           </button>
                         </div>
                       </div>
@@ -1089,7 +1086,7 @@ const uploadPhoto = async () => {
           <div className="modal assign-voters-modal content-card">
             <div className="content-header">
               <div>
-                <h2 className="content-title">👥 Assign Voters to Election</h2>
+                <h2 className="content-title">Assign Voters to Election</h2>
                 <p className="text-sm text-gray-500 mt-1">
                   Election ID: <span className="font-semibold">#{selectedElectionId}</span>
                 </p>
@@ -1098,7 +1095,7 @@ const uploadPhoto = async () => {
                 className="btn btn-secondary"
                 onClick={() => setShowAssignModal(false)}
               >
-                ✕ Close
+                Close
               </button>
             </div>
 
@@ -1106,7 +1103,7 @@ const uploadPhoto = async () => {
               <div className="search-box mb-4">
                 <input
                   type="text"
-                  placeholder="🔍 Search by name..."
+                  placeholder="Search by name..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="search-input"
@@ -1144,7 +1141,7 @@ const uploadPhoto = async () => {
               <div className="voters-list-container">
                 {votersLoading ? (
                   <div className="text-center py-10 text-gray-500">
-                    ⏳ Loading voters...
+                    Loading voters...
                   </div>
                 ) : votersError ? (
                   <div className="text-center py-10 text-red-600 font-medium">
@@ -1154,7 +1151,6 @@ const uploadPhoto = async () => {
                   <div className="empty-voters text-center py-12 px-6 text-gray-500">
                     {search.trim() ? (
                       <>
-                        <div className="text-4xl mb-3">🔍</div>
                         <div className="text-lg font-medium mb-2">
                           No matching voters
                         </div>
@@ -1162,7 +1158,6 @@ const uploadPhoto = async () => {
                       </>
                     ) : (
                       <>
-                        <div className="text-4xl mb-3">👥</div>
                         <div className="text-lg font-medium mb-2">
                           No available voters
                         </div>
@@ -1198,14 +1193,14 @@ const uploadPhoto = async () => {
                 className="btn btn-secondary"
                 onClick={() => setShowAssignModal(false)}
               >
-                ✕ Cancel
+                Cancel
               </button>
               <button
                 className="btn btn-success"
                 onClick={assignVoters}
                 disabled={selectedVoters.length === 0}
               >
-                ✅ Assign {selectedVoters.length} Voter
+                Assign {selectedVoters.length} Voter
                 {selectedVoters.length !== 1 ? "s" : ""}
               </button>
             </div>

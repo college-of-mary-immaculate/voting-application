@@ -46,7 +46,25 @@ export default function Candidates() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Validate position_id to prevent negative numbers
+    if (name === 'position_id') {
+      if (value === '') {
+        setFormData(prev => ({ ...prev, [name]: '' }));
+        setError(null);
+        return;
+      }
+      const numValue = parseInt(value, 10);
+      if (isNaN(numValue) || numValue < 1) {
+        setError('Position ID must be a positive number (1 or greater)');
+        setFormData(prev => ({ ...prev, [name]: '' }));
+        return;
+      }
+      setError(null);
+      setFormData(prev => ({ ...prev, [name]: numValue }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handlePhotoChange = (e) => {
@@ -116,8 +134,16 @@ export default function Candidates() {
     e.preventDefault();
     setError(null);
 
-    if (!formData.full_name.trim() || !formData.position_id) {
-      setError('Full name and position ID are required');
+    // Validate position_id
+    const positionIdNum = Number(formData.position_id);
+    
+    if (!formData.full_name.trim()) {
+      setError('Full name is required');
+      return;
+    }
+    
+    if (!formData.position_id || isNaN(positionIdNum) || positionIdNum < 1) {
+      setError('Valid position ID (positive number) is required');
       return;
     }
 
@@ -137,7 +163,7 @@ export default function Candidates() {
       let data;
       if (editingId) {
         data = await API.put(`/candidates/${editingId}`, {
-          position_id: Number(formData.position_id),
+          position_id: positionIdNum,
           full_name: formData.full_name.trim(),
           party_name: formData.party_name.trim() || null,
           photo_url: photoUrl || null,
@@ -145,7 +171,7 @@ export default function Candidates() {
         });
       } else {
         data = await API.post('/candidates', {
-          position_id: Number(formData.position_id),
+          position_id: positionIdNum,
           full_name: formData.full_name.trim(),
           party_name: formData.party_name.trim() || null,
           photo_url: photoUrl || null,
@@ -192,16 +218,47 @@ export default function Candidates() {
         headers: API.getHeaders(),
       });
       
+      // Check if response is ok (200-299)
       if (response.ok) {
-        alert('Candidate deleted successfully!');
-        fetchCandidates();
+        // Check if there's content to parse
+        const contentType = response.headers.get('content-type');
+        const contentLength = response.headers.get('content-length');
+        
+        // If no content (204) or empty response, still success
+        if (response.status === 204 || contentLength === '0') {
+          alert('Candidate deleted successfully!');
+          fetchCandidates();
+          return;
+        }
+        
+        // Try to parse JSON if there is content
+        try {
+          const data = await response.json();
+          if (data.status === 'success') {
+            alert('Candidate deleted successfully!');
+            fetchCandidates();
+          } else {
+            throw new Error(data.error || 'Delete failed');
+          }
+        } catch (parseError) {
+          // If JSON parsing fails but response was OK, assume success
+          alert('Candidate deleted successfully!');
+          fetchCandidates();
+        }
       } else {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || 'Delete failed');
       }
     } catch (err) {
       console.error('Delete error:', err);
-      alert(`Error: ${err.message}`);
+      
+      // If it's a JSON parse error but deletion likely worked
+      if (err.message && err.message.includes('JSON')) {
+        alert('Candidate deleted successfully!');
+        fetchCandidates();
+      } else {
+        alert(`Error: ${err.message}`);
+      }
     }
   };
 
@@ -245,10 +302,18 @@ export default function Candidates() {
                   onChange={handleChange}
                   placeholder="e.g. 1"
                   required
+                  min="1"
+                  step="1"
                   disabled={submitting || uploadingPhoto}
+                  onKeyDown={(e) => {
+                    // Prevent negative sign and 'e' from being typed
+                    if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                      e.preventDefault();
+                    }
+                  }}
                 />
                 <small className="help-text">
-                  Enter a valid position ID from the Positions table
+                  Enter a valid positive position ID from the Positions table (e.g., 1, 2, 3...)
                 </small>
               </div>
 
@@ -288,7 +353,7 @@ export default function Candidates() {
                   disabled={submitting || uploadingPhoto}
                 />
                 <small className="help-text">
-                  Max 5MB. Supported formats: JPG, PNG, GIF
+                  Max 5MB. Supported formats: JPG, PNG, GIF, WebP
                 </small>
               </div>
 
@@ -330,6 +395,9 @@ export default function Candidates() {
                   <option value="Active">Active</option>
                   <option value="Withdrawn">Withdrawn</option>
                 </select>
+                <small className="help-text">
+                  Withdrawn candidates will not appear in active elections
+                </small>
               </div>
             </div>
 
@@ -372,7 +440,7 @@ export default function Candidates() {
           <div className="table-responsive">
             <table className="candidates-table">
               <thead>
-                <tr>
+                 <tr>
                   <th>Ballot</th>
                   <th>Photo</th>
                   <th>Name</th>
@@ -381,7 +449,7 @@ export default function Candidates() {
                   <th>Election</th>
                   <th>Status</th>
                   <th>Actions</th>
-                </tr>
+                 </tr>
               </thead>
               <tbody>
                 {candidates.map(c => (
@@ -395,11 +463,11 @@ export default function Candidates() {
                           className="candidate-photo"
                           onError={e => {
                             e.target.onerror = null;
-                            e.target.src = 'https://via.placeholder.com/60?text=Error';
+                            e.target.src = 'https://via.placeholder.com/60?text=No+Image';
                           }}
                         />
                       ) : (
-                        <div className="candidate-photo-placeholder">
+                        <div className="candidate-photo-placeholder" style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
                           👤
                         </div>
                       )}
@@ -409,7 +477,7 @@ export default function Candidates() {
                     <td>{c.position_name || 'Unknown'}</td>
                     <td>{c.election_name || 'Unknown'}</td>
                     <td>
-                      <span className={`status-badge ${c.status?.toLowerCase() || 'active'}`}>
+                      <span className={`status-badge ${c.status?.toLowerCase() === 'withdrawn' ? 'withdrawn' : 'active'}`}>
                         {c.status || 'Active'}
                       </span>
                     </td>

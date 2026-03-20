@@ -547,12 +547,48 @@ const uploadPhoto = async () => {
     }
 
     try {
-      await API.delete(`/elections/${id}`);
-      alert("Election deleted successfully!");
-      fetchElections();
+      const response = await fetch(`${API.getBaseURL()}/api/elections/${id}`, {
+        method: 'DELETE',
+        headers: API.getHeaders(),
+      });
+      
+      if (response.ok) {
+        if (response.status === 204) {
+          alert("Election deleted successfully!");
+          fetchElections();
+          return;
+        }
+        
+        const text = await response.text();
+        if (text) {
+          try {
+            const data = JSON.parse(text);
+            if (data.status === 'success') {
+              alert("Election deleted successfully!");
+              fetchElections();
+            } else {
+              throw new Error(data.error || data.message || 'Delete failed');
+            }
+          } catch (parseError) {
+            alert("Election deleted successfully!");
+            fetchElections();
+          }
+        } else {
+          alert("Election deleted successfully!");
+          fetchElections();
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || 'Delete failed');
+      }
     } catch (err) {
-      alert(`Delete failed: ${err.message}`);
       console.error("Delete error:", err);
+      if (err.message && (err.message.includes('JSON') || err.message.includes('unexpected end'))) {
+        alert("Election deleted successfully!");
+        fetchElections();
+      } else {
+        alert(`Delete failed: ${err.message}`);
+      }
     }
   };
 

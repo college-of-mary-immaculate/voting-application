@@ -1,0 +1,102 @@
+version: "3.9"
+
+services:
+  mysql_master:
+    image: mariadb:10.3
+    container_name: mysql_master
+    env_file:
+      - ./master/mysql_master.env
+    ports:
+      - "4406:3306"
+    volumes:
+      - master_data:/var/lib/mysql
+      - ./master/conf/mysql.conf.cnf:/etc/mysql/conf.d/mysql.conf.cnf
+      - ./db:/db
+
+  mysql_slave:
+    image: mariadb:10.3
+    container_name: mysql_slave
+    env_file:
+      - ./slave/mysql_slave.env
+    depends_on:
+      - mysql_master
+    ports:
+      - "5506:3306"
+    volumes:
+      - slave_data:/var/lib/mysql
+      - ./slave/conf/mysql.conf.cnf:/etc/mysql/conf.d/mysql.conf.cnf
+      - ./db:/db
+
+  backend:
+    build:
+      context: ./backend
+    container_name: voting_backend
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mysql_master
+      - mysql_slave
+    env_file:
+      - ./backend/.env
+    command: sh -c "npm install && npm start"
+
+  ui1:
+    build:
+      context: ./UI
+      dockerfile: Dockerfile
+    container_name: voting_ui1
+    working_dir: /app
+    volumes:
+      - ./UI:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  ui2:
+    build:
+      context: ./UI
+      dockerfile: Dockerfile
+    container_name: voting_ui2
+    working_dir: /app
+    volumes:
+      - ./UI:/app
+      - /app/node_modules
+    ports:
+      - "5174:3000"
+
+    depends_on:
+      - backend
+
+  ui3:
+    build:
+      context: ./UI
+      dockerfile: Dockerfile
+    container_name: voting_ui3
+    working_dir: /app
+    volumes:
+      - ./UI:/app
+      - /app/node_modules
+    ports:
+      - "5175:3000"
+
+    depends_on:
+      - backend
+
+  loadbalancer:
+    image: nginx:latest
+    container_name: nginx_lb
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    ports:
+      - "8080:80"
+    depends_on:
+      - ui1
+
+volumes:
+  master_data:
+  slave_data:

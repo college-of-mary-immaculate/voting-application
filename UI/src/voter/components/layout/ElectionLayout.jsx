@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { removeAuthToken, getElections } from '../../services/api';
+import { removeAuthToken, getElections, isAuthenticated } from '../../services/api';
 
 // Mapping ng election_type_id sa icon at URL slug
 const electionTypeMap = {
@@ -50,6 +50,7 @@ export default function ElectionLayout() {
   const [isMobile, setIsMobile] = useState(false);
   const [elections, setElections] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     const checkScreen = () => {
@@ -62,20 +63,45 @@ export default function ElectionLayout() {
     return () => window.removeEventListener('resize', checkScreen);
   }, []);
 
-  // Kunin ang lahat ng assigned elections
+  // Check authentication first
   useEffect(() => {
+    const checkAuth = async () => {
+      const authenticated = await isAuthenticated(); // You need to implement this
+      if (!authenticated) {
+        removeAuthToken();
+        navigate('/login', { replace: true });
+        return;
+      }
+      setAuthChecked(true);
+    };
+    
+    checkAuth();
+  }, [navigate]);
+
+  // Kunin ang lahat ng assigned elections - only if authenticated
+  useEffect(() => {
+    if (!authChecked) return;
+
     const fetchElections = async () => {
       try {
+        setLoading(true);
         const res = await getElections(); // GET /elections/my-elections
         setElections(res.data?.data || []);
       } catch (err) {
         console.error('Failed to fetch elections:', err);
+        
+        // Check if error is due to unauthorized
+        if (err.response?.status === 401) {
+          removeAuthToken();
+          navigate('/login', { replace: true });
+        }
       } finally {
         setLoading(false);
       }
     };
+    
     fetchElections();
-  }, []);
+  }, [authChecked, navigate]);
 
   // Auto-redirect kung nasa /elections root at may elections
   useEffect(() => {
@@ -94,18 +120,28 @@ export default function ElectionLayout() {
 
   const handleLogout = () => {
     removeAuthToken();
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
 
   const isActive = (path) => location.pathname.startsWith(path);
 
-  if (loading) {
+  // Show loading while checking auth
+  if (!authChecked) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
-        <div className="animate-pulse text-2xl text-indigo-600">Loading...</div>
+        <div className="animate-pulse text-2xl text-indigo-600">Checking authentication...</div>
       </div>
     );
   }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="animate-pulse text-2xl text-indigo-600">Loading your elections...</div>
+      </div>
+    );
+  }
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">

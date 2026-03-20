@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { loginVoter, setAuthToken } from '../services/api';
 
@@ -10,6 +10,14 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      navigate('/elections', { replace: true });
+    }
+  }, [navigate]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -38,21 +46,26 @@ export default function Login() {
 
     try {
       const res = await loginVoter(form);
+      console.log('Login response:', res.data); // Debug log
+
       const { result, token } = res.data;
 
       if (result.status === 'success') {
+        // Store token first
         setAuthToken(token);
-
+        
         const userType = result.data?.type;
+        const userData = result.data;
 
         if (userType === 'admin') {
-          localStorage.setItem('user', JSON.stringify(result.data));
+          localStorage.setItem('user', JSON.stringify(userData));
           const tokenEncoded = encodeURIComponent(token);
-          const userEncoded = encodeURIComponent(JSON.stringify(result.data));
+          const userEncoded = encodeURIComponent(JSON.stringify(userData));
           window.location.href = `/admin?token=${tokenEncoded}&user=${userEncoded}`;
         } else {
-          // ✅ Voter: redirect to /elections (not /voter-dashboard)
-          navigate('/elections');
+          // Voter - navigate to elections
+          console.log('Voter logged in, navigating to /elections');
+          navigate('/elections', { replace: true });
         }
       } else {
         setApiError(result.message || 'Login failed');

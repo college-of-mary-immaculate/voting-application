@@ -27,27 +27,18 @@ function App() {
         <Route path="/signup" element={<VoterSignup />} />
         <Route path="/login" element={<VoterLogin />} />
 
-        {/* Voter routes */}
-        <Route path="/elections" element={<ElectionLayout />}>
-          {/* Kung walang napiling election, pwedeng mag-redirect sa unang assigned election (kung meron) */}
-          {/* Pero sa ngayon, magdi-display na lang ng mensahe – kung gusto mo, gawin na lang sa ElectionLayout ang redirect */}
-          <Route index element={<Navigate to="/elections/first" />} /> 
-          {/* Temporary: ire-redirect sa /elections/first – dapat sa ElectionLayout mo i-handle ang redirect to first election */}
-          {/* Para sa simple, i-delete na lang natin ang index route at sa ElectionLayout na lang mag-redirect */}
-        </Route>
-
-        {/* Para sa actual na landing page */}
+        {/* Voter routes - NO INDEX ROUTE HERE */}
+        <Route path="/elections" element={<ElectionLayout />} />
+        
+        {/* These routes will be rendered inside ElectionLayout's Outlet */}
         <Route path="/elections/:slug/:electionId" element={<ElectionLayout />}>
           <Route index element={<ElectionLanding />} />
         </Route>
 
-        {/* Voting pages */}
         <Route path="/elections/:slug/:electionId/vote" element={<ElectionLayout />}>
-          <Route index element={<NationalElection />} /> {/* temporary – kailangan dynamic */}
-          {/* Sa totoo lang, kailangan mong palitan ang voting pages para tanggapin ang slug at electionId, pero sa ngayon ganito muna */}
+          <Route index element={<NationalElection />} />
         </Route>
 
-        {/* Tally page */}
         <Route path="/elections/tally/:electionId" element={<ElectionLayout />}>
           <Route index element={<ElectionTally />} />
         </Route>
@@ -62,7 +53,7 @@ function App() {
         </Route>
 
         {/* Default redirect */}
-        <Route path="*" element={<Navigate to="/login" />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   );

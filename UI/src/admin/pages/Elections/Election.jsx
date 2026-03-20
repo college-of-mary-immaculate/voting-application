@@ -115,6 +115,29 @@ export default function Elections() {
     }
   };
 
+  // Date validation function
+  const validateDates = (startAt, endAt) => {
+    if (!startAt || !endAt) {
+      return { valid: false, message: "Start and end dates are required" };
+    }
+
+    const startDate = new Date(startAt);
+    const endDate = new Date(endAt);
+
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return { valid: false, message: "Invalid date format" };
+    }
+
+    if (startDate >= endDate) {
+      return { 
+        valid: false, 
+        message: "Start date and time must be earlier than end date and time" 
+      };
+    }
+
+    return { valid: true, message: "" };
+  };
+
   const fetchElections = async () => {
     try {
       setLoading(true);
@@ -454,6 +477,13 @@ const uploadPhoto = async () => {
     }
     if (!formData.start_at || !formData.end_at) {
       setError("Start and end dates are required");
+      return;
+    }
+
+    // Validate dates
+    const dateValidation = validateDates(formData.start_at, formData.end_at);
+    if (!dateValidation.valid) {
+      setError(dateValidation.message);
       return;
     }
 

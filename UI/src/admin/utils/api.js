@@ -1,5 +1,9 @@
 // API utility with authentication token
 const API = {
+  getBaseURL() {
+    return "http://localhost:3000";
+  },
+
   getAuthToken() {
     return localStorage.getItem("token");
   },
@@ -13,7 +17,7 @@ const API = {
   },
 
   async request(endpoint, options = {}) {
-    const response = await fetch(`http://localhost:3000/api${endpoint}`, {
+    const response = await fetch(`${this.getBaseURL()}/api${endpoint}`, {
       ...options,
       headers: {
         ...this.getHeaders(),
@@ -31,9 +35,7 @@ const API = {
 
     // 403 = not allowed (admin only)
     if (response.status === 403) {
-      // optional redirect
       window.location.href = "/login";
-
       throw new Error("Forbidden - Admin access required");
     }
 
@@ -65,11 +67,12 @@ const API = {
     const response = await this.request(endpoint, { method: "DELETE" });
     return response.json();
   },
+
   async upload(endpoint, formData) {
-    const token = localStorage.getItem('token');
+    const token = this.getAuthToken();
     
     try {
-      const response = await fetch(`http://localhost:3000/api${endpoint}`, {
+      const response = await fetch(`${this.getBaseURL()}/api${endpoint}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -89,6 +92,17 @@ const API = {
       console.error(`Upload Error (${endpoint}):`, error);
       throw error;
     }
+  },
+
+  // Helper function to get full image URL
+  getImageUrl(photoUrl) {
+    if (!photoUrl) return null;
+    // If it's already a full URL, use it as is
+    if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
+      return photoUrl;
+    }
+    // Otherwise, prepend the base URL
+    return `${this.getBaseURL()}${photoUrl}`;
   }
 };
 

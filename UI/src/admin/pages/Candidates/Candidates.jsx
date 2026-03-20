@@ -6,6 +6,7 @@ export default function Candidates() {
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [error, setError] = useState(null);
 
   const [formData, setFormData] = useState({
@@ -16,6 +17,8 @@ export default function Candidates() {
     status: 'Active',
   });
 
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
 
@@ -46,6 +49,54 @@ export default function Candidates() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError("File size must be less than 5MB");
+        return;
+      }
+
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        setError("File must be an image");
+        return;
+      }
+
+      setPhotoFile(file);
+      
+      // Create preview URL
+      const previewUrl = URL.createObjectURL(file);
+      setPhotoPreview(previewUrl);
+      setFormData(prev => ({ ...prev, photo_url: previewUrl }));
+    }
+  };
+
+  const uploadPhoto = async () => {
+    if (!photoFile) return null;
+
+    try {
+      setUploadingPhoto(true);
+      
+      const formData = new FormData();
+      formData.append('photo', photoFile);
+
+      const response = await API.upload('/upload/photo', formData);
+      
+      if (response.status === 'success') {
+        return response.data.file_path;
+      } else {
+        throw new Error(response.message || 'Upload failed');
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      throw err;
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       position_id: '',
@@ -54,6 +105,8 @@ export default function Candidates() {
       photo_url: '',
       status: 'Active',
     });
+    setPhotoFile(null);
+    setPhotoPreview(null);
     setEditingId(null);
     setShowForm(false);
     setError(null);
@@ -71,13 +124,23 @@ export default function Candidates() {
     setSubmitting(true);
 
     try {
+      let photoUrl = formData.photo_url;
+
+      // Upload photo if selected
+      if (photoFile) {
+        const uploadedUrl = await uploadPhoto();
+        if (uploadedUrl) {
+          photoUrl = uploadedUrl;
+        }
+      }
+
       let data;
       if (editingId) {
         data = await API.put(`/candidates/${editingId}`, {
           position_id: Number(formData.position_id),
           full_name: formData.full_name.trim(),
           party_name: formData.party_name.trim() || null,
-          photo_url: formData.photo_url.trim() || null,
+          photo_url: photoUrl || null,
           status: formData.status,
         });
       } else {
@@ -85,7 +148,7 @@ export default function Candidates() {
           position_id: Number(formData.position_id),
           full_name: formData.full_name.trim(),
           party_name: formData.party_name.trim() || null,
-          photo_url: formData.photo_url.trim() || null,
+          photo_url: photoUrl || null,
           status: formData.status,
         });
       }
@@ -114,6 +177,8 @@ export default function Candidates() {
       photo_url: candidate.photo_url || '',
       status: candidate.status || 'Active',
     });
+    setPhotoFile(null);
+    setPhotoPreview(candidate.photo_url ? API.getImageUrl(candidate.photo_url) : null);
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -152,7 +217,7 @@ export default function Candidates() {
               resetForm();
               setShowForm(!showForm);
             }}
-            disabled={submitting}
+            disabled={submitting || uploadingPhoto}
           >
             {showForm ? 'Cancel' : 'Add Candidate'}
           </button>
@@ -170,7 +235,7 @@ export default function Candidates() {
                   onChange={handleChange}
                   placeholder="e.g. 1"
                   required
-                  disabled={submitting}
+                  disabled={submitting || uploadingPhoto}
                 />
                 <small className="help-text">
                   Enter a valid position ID from the Positions table
@@ -186,7 +251,7 @@ export default function Candidates() {
                   onChange={handleChange}
                   placeholder="Juan Dela Cruz"
                   required
-                  disabled={submitting}
+                  disabled={submitting || uploadingPhoto}
                 />
               </div>
 
@@ -198,25 +263,60 @@ export default function Candidates() {
                   value={formData.party_name}
                   onChange={handleChange}
                   placeholder="e.g. SAMAHAN"
-                  disabled={submitting}
+                  disabled={submitting || uploadingPhoto}
                 />
               </div>
 
               <div className="form-group">
-                <label>Photo URL (optional)</label>
+                <label>Photo (optional)</label>
                 <input
-                  type="url"
-                  name="photo_url"
-                  value={formData.photo_url}
-                  onChange={handleChange}
-                  placeholder="https://example.com/photo.jpg"
-                  disabled={submitting}
+                  type="file"
+                  name="photo"
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                  className="file-input"
+                  disabled={submitting || uploadingPhoto}
                 />
+                <small className="help-text">
+                  Max 5MB. Supported formats: JPG, PNG, GIF
+                </small>
               </div>
+
+              {photoPreview && (
+                <div className="form-group full-width">
+                  <label>Photo Preview</label>
+                  <div className="photo-preview-container">
+                    <img 
+                      src={photoPreview} 
+                      alt="Preview" 
+                      className="photo-preview"
+                    />
+                    {photoFile && (
+                      <button
+                        type="button"
+                        className="btn-remove-photo"
+                        onClick={() => {
+                          setPhotoFile(null);
+                          setPhotoPreview(null);
+                          setFormData(prev => ({ ...prev, photo_url: '' }));
+                        }}
+                        disabled={submitting || uploadingPhoto}
+                      >
+                        Remove Photo
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="form-group full-width">
                 <label>Status</label>
-                <select name="status" value={formData.status} onChange={handleChange} disabled={submitting}>
+                <select 
+                  name="status" 
+                  value={formData.status} 
+                  onChange={handleChange} 
+                  disabled={submitting || uploadingPhoto}
+                >
                   <option value="Active">Active</option>
                   <option value="Withdrawn">Withdrawn</option>
                 </select>
@@ -229,9 +329,11 @@ export default function Candidates() {
               <button
                 type="submit"
                 className="btn btn-success"
-                disabled={submitting}
+                disabled={submitting || uploadingPhoto}
               >
-                {submitting
+                {uploadingPhoto 
+                  ? 'Uploading Photo...' 
+                  : submitting
                   ? 'Saving...'
                   : editingId
                   ? 'Update Candidate'
@@ -241,7 +343,7 @@ export default function Candidates() {
                 type="button"
                 className="btn btn-secondary"
                 onClick={resetForm}
-                disabled={submitting}
+                disabled={submitting || uploadingPhoto}
               >
                 Cancel
               </button>
@@ -276,12 +378,21 @@ export default function Candidates() {
                   <tr key={c.candidate_id}>
                     <td>{c.ballot_number || '—'}</td>
                     <td>
-                      <img
-                        src={c.photo_url || 'https://via.placeholder.com/60?text=No+Photo'}
-                        alt={c.full_name}
-                        className="candidate-photo"
-                        onError={e => e.target.src = 'https://via.placeholder.com/60?text=Error'}
-                      />
+                      {c.photo_url ? (
+                        <img
+                          src={API.getImageUrl(c.photo_url)}
+                          alt={c.full_name}
+                          className="candidate-photo"
+                          onError={e => {
+                            e.target.onerror = null;
+                            e.target.src = 'https://via.placeholder.com/60?text=Error';
+                          }}
+                        />
+                      ) : (
+                        <div className="candidate-photo-placeholder">
+                          👤
+                        </div>
+                      )}
                     </td>
                     <td className="name-cell">{c.full_name}</td>
                     <td>{c.party_name || '—'}</td>
@@ -296,14 +407,14 @@ export default function Candidates() {
                       <button
                         className="btn btn-edit"
                         onClick={() => handleEdit(c)}
-                        disabled={submitting}
+                        disabled={submitting || uploadingPhoto}
                       >
                         Edit
                       </button>
                       <button
                         className="btn btn-delete"
                         onClick={() => handleDelete(c.candidate_id)}
-                        disabled={submitting}
+                        disabled={submitting || uploadingPhoto}
                       >
                         Delete
                       </button>

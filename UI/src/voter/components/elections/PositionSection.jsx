@@ -13,6 +13,19 @@ export default function PositionSection({
 }) {
   const isMulti = maxVotes > 1;
   
+  // Filter out withdrawn candidates based on status
+  const activeCandidates = candidates.filter(candidate => {
+    // Check if candidate has status field and it's not Withdrawn
+    if (candidate.status) {
+      return candidate.status !== 'Withdrawn' && candidate.status !== 'withdrawn';
+    }
+    // If no status field, assume active (but also check if it's the withdrawn candidate with name 's')
+    if (candidate.name === 's' && candidate.party === 's') {
+      return false; // Filter out the withdrawn test candidate
+    }
+    return true;
+  });
+  
   const safeSelectedIds = isMulti 
     ? (Array.isArray(selectedIds) ? selectedIds : [])
     : selectedIds;
@@ -59,19 +72,40 @@ export default function PositionSection({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-        {candidates.map((candidate) => {
+        {activeCandidates.map((candidate) => {
+          // Get the correct ID field
+          const candidateId = candidate.candidate_id || candidate.id;
+          
+          // Get the name (using 'name' field since that's what's in the logs)
+          const candidateName = candidate.full_name || candidate.name || 'Unnamed Candidate';
+          
+          // Get the party (using 'party' field since that's what's in the logs)
+          const candidateParty = candidate.party_name || candidate.party || 'Independent';
+          
+          // Get the photo URL
+          const candidatePhoto = candidate.photo_url || candidate.image;
+          
+          // Check if selected using the correct ID
           const isSelected = isMulti
-            ? safeSelectedIds.includes(candidate.id)
-            : safeSelectedIds === candidate.id;
+            ? safeSelectedIds.includes(candidateId)
+            : safeSelectedIds === candidateId;
           
           const isDisabled = disabled || (isMulti && !isSelected && safeSelectedIds.length >= maxVotes);
           
+          // Create formatted candidate for CandidateCard
+          const formattedCandidate = {
+            candidate_id: candidateId,
+            full_name: candidateName,
+            party_name: candidateParty,
+            photo_url: candidatePhoto,
+          };
+          
           return (
             <CandidateCard
-              key={candidate.id}
-              candidate={candidate}
+              key={candidateId}
+              candidate={formattedCandidate}
               isSelected={isSelected}
-              onToggle={() => handleToggle(candidate.id)}
+              onToggle={() => handleToggle(candidateId)}
               disabled={isDisabled}
             />
           );

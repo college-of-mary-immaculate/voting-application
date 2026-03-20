@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
-import PositionSection from './PositionSection';
-import ConfirmationModal from './ConfirmationModal';
-import SuccessToast from './SuccessToast';
-import CountdownTimer from './CountdownTimer';
+import { useState, useEffect } from "react";
+import PositionSection from "./PositionSection";
+import ConfirmationModal from "./ConfirmationModal";
+import SuccessToast from "./SuccessToast";
+import CountdownTimer from "./CountdownTimer";
 
 export default function ElectionContainer({
   electionName,
@@ -17,7 +17,7 @@ export default function ElectionContainer({
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [voteCount, setVoteCount] = useState(0);
   const [hasVoted, setHasVoted] = useState(false);
-  const [validationMessage, setValidationMessage] = useState('');
+  const [validationMessage, setValidationMessage] = useState("");
   const [isExpired, setIsExpired] = useState(false);
 
   // Check if election has ended
@@ -33,8 +33,8 @@ export default function ElectionContainer({
 
   const handleSelect = (positionId, isMulti) => (value) => {
     if (isExpired) return;
-    setVotes(prev => {
-      if (typeof value === 'function') {
+    setVotes((prev) => {
+      if (typeof value === "function") {
         return { ...prev, [positionId]: value(prev[positionId]) };
       } else {
         return { ...prev, [positionId]: value };
@@ -55,7 +55,7 @@ export default function ElectionContainer({
     }, 0);
     setVoteCount(total);
 
-    const voteData = positions.map(pos => ({
+    const voteData = positions.map((pos) => ({
       positionId: pos.id,
       selected: votes[pos.id] || (pos.maxVotes > 1 ? [] : null),
     }));
@@ -67,19 +67,41 @@ export default function ElectionContainer({
       setHasVoted(true);
       setTimeout(() => setShowSuccessToast(false), 4000);
     } catch (error) {
-      alert('Failed to submit votes. Please try again.');
+      alert("Failed to submit votes. Please try again.");
     }
   };
 
   const handleCancel = () => setShowConfirmModal(false);
   const handleEdit = () => setShowConfirmModal(false);
 
-  const selectedPositions = positions.map(pos => {
+  // FIX: Map candidates to the expected structure for the confirmation modal
+  // In ElectionContainer, update the selectedPositions mapping:
+  const selectedPositions = positions.map((pos) => {
     const selected = votes[pos.id];
     if (pos.maxVotes > 1) {
       const selectedArray = Array.isArray(selected) ? selected : [];
       const selectedCandidates = selectedArray
-        .map(id => pos.candidates.find(c => c.id === id))
+        .map((id) => {
+          // Find candidate by id (since your data uses 'id' field)
+          const candidate = pos.candidates.find(
+            (c) => c.candidate_id === id || c.id === id,
+          );
+          // Check if candidate exists and is not withdrawn
+          if (
+            candidate &&
+            candidate.status !== "Withdrawn" &&
+            candidate.status !== "withdrawn" &&
+            candidate.name !== "s"
+          ) {
+            return {
+              id: candidate.candidate_id || candidate.id,
+              full_name: candidate.full_name || candidate.name,
+              party_name: candidate.party_name || candidate.party,
+              photo_url: candidate.photo_url || candidate.image,
+            };
+          }
+          return null;
+        })
         .filter(Boolean);
       return {
         id: pos.id,
@@ -87,11 +109,28 @@ export default function ElectionContainer({
         candidates: selectedCandidates,
       };
     } else {
-      const candidate = selected ? pos.candidates.find(c => c.id === selected) : null;
+      const candidate = selected
+        ? pos.candidates.find(
+            (c) => c.candidate_id === selected || c.id === selected,
+          )
+        : null;
+      // Only include if candidate is active and not withdrawn
+      const validCandidate =
+        candidate &&
+        candidate.status !== "Withdrawn" &&
+        candidate.status !== "withdrawn" &&
+        candidate.name !== "s"
+          ? {
+              id: candidate.candidate_id || candidate.id,
+              full_name: candidate.full_name || candidate.name,
+              party_name: candidate.party_name || candidate.party,
+              photo_url: candidate.photo_url || candidate.image,
+            }
+          : null;
       return {
         id: pos.id,
         title: pos.title,
-        candidate,
+        candidate: validCandidate,
       };
     }
   });
@@ -104,16 +143,18 @@ export default function ElectionContainer({
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?q=80&w=2070&auto=format&fit=crop')",
+          backgroundImage:
+            "url('https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?q=80&w=2070&auto=format&fit=crop')",
         }}
       />
       <div className="absolute inset-0 bg-black/40" />
       <div
         className="absolute inset-0 opacity-10 bg-repeat"
         style={{
-          backgroundImage: "url('https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Flag_of_the_Philippines.svg/1280px-Flag_of_the_Philippines.svg.png')",
-          backgroundSize: '200px 100px',
-          backgroundBlendMode: 'overlay',
+          backgroundImage:
+            "url('https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Flag_of_the_Philippines.svg/1280px-Flag_of_the_Philippines.svg.png')",
+          backgroundSize: "200px 100px",
+          backgroundBlendMode: "overlay",
         }}
       />
 
@@ -139,10 +180,12 @@ export default function ElectionContainer({
               </p>
             </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full lg:w-auto">
-              {endTime && (<CountdownTimer endTime={endTime} serverTime={serverTime}/>)}
+              {endTime && (
+                <CountdownTimer endTime={endTime} serverTime={serverTime} />
+              )}
               <div className="bg-white/70 backdrop-blur-md rounded-3xl p-4 sm:p-5 shadow-lg border border-white/50 w-full sm:w-auto overflow-x-auto">
                 <div className="flex gap-4 sm:gap-8 min-w-max">
-                  {positions.map(pos => (
+                  {positions.map((pos) => (
                     <div key={pos.id} className="text-center">
                       <div className="text-xs uppercase tracking-wider text-[#5a6b7a]">
                         {pos.shortTitle || pos.title}
@@ -150,7 +193,9 @@ export default function ElectionContainer({
                       <div className="text-xl sm:text-2xl font-semibold text-[#0f4c5c] mt-1">
                         {pos.maxVotes > 1
                           ? `${votes[pos.id]?.length || 0}/${pos.maxVotes}`
-                          : votes[pos.id] ? '✓' : '—'}
+                          : votes[pos.id]
+                            ? "✓"
+                            : "—"}
                       </div>
                     </div>
                   ))}
@@ -160,7 +205,7 @@ export default function ElectionContainer({
           </div>
 
           <SuccessToast show={showSuccessToast} voteCount={voteCount} />
-          
+
           <ConfirmationModal
             isOpen={showConfirmModal}
             onCancel={handleCancel}
@@ -169,12 +214,20 @@ export default function ElectionContainer({
             selectedPositions={selectedPositions}
           />
 
-          {positions.map(pos => (
+          {positions.map((pos) => (
             <PositionSection
               key={pos.id}
               id={pos.id}
               title={pos.title}
-              candidates={pos.candidates}
+              candidates={pos.candidates.map((c) => ({
+                id: c.candidate_id || c.id,
+                name: c.full_name || c.name,
+                party: c.party_name || c.party,
+                photo_url: c.photo_url || c.image,
+                candidate_id: c.candidate_id,
+                full_name: c.full_name,
+                party_name: c.party_name,
+              }))}
               selectedIds={votes[pos.id] || (pos.maxVotes > 1 ? [] : null)}
               onSelect={handleSelect(pos.id, pos.maxVotes > 1)}
               maxVotes={pos.maxVotes}
@@ -189,11 +242,15 @@ export default function ElectionContainer({
               disabled={disabled}
               className={`group text-base sm:text-lg font-medium py-3 sm:py-4 px-10 sm:px-14 rounded-full transition-all duration-300 transform hover:scale-105 ${
                 disabled
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-[#0f4c5c] text-white shadow-xl hover:shadow-2xl hover:bg-[#1a6b7f]'
+                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  : "bg-[#0f4c5c] text-white shadow-xl hover:shadow-2xl hover:bg-[#1a6b7f]"
               }`}
             >
-              {disabled ? (isExpired ? 'Election Ended' : 'Vote Submitted') : 'Review & Submit'}
+              {disabled
+                ? isExpired
+                  ? "Election Ended"
+                  : "Vote Submitted"
+                : "Review & Submit"}
             </button>
           </div>
 

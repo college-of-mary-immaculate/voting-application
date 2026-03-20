@@ -1,67 +1,131 @@
-export default function ConfirmationModal({
-  isOpen,
-  onCancel,
-  onConfirm,
-  onEdit,
-  selectedPositions,
+import React from 'react';
+
+export default function ConfirmationModal({ 
+  isOpen, 
+  onCancel, 
+  onConfirm, 
+  onEdit, 
+  selectedPositions 
 }) {
   if (!isOpen) return null;
 
+  // Helper function to get candidate name
+  const getCandidateName = (candidate) => {
+    if (!candidate) return 'None selected';
+    return candidate.full_name || candidate.name || candidate.FullName || 'Unnamed Candidate';
+  };
+
+  // Helper function to get party name
+  const getPartyName = (candidate) => {
+    if (!candidate) return '';
+    return candidate.party_name || candidate.party || '';
+  };
+
+  // Helper function to get photo URL
+  const getPhotoUrl = (candidate) => {
+    if (!candidate) return null;
+    const photoUrl = candidate.photo_url || candidate.image || candidate.photo;
+    if (!photoUrl) return null;
+    if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
+      return photoUrl;
+    }
+    return `http://localhost:3000${photoUrl}`;
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/20 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fadeIn">
-      <div className="bg-white/90 backdrop-blur-xl rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 md:p-8 shadow-2xl border border-white/40">
-        <h2 className="text-2xl sm:text-3xl font-light text-[#0f4c5c] mb-4 sm:mb-6">Review Your Vote</h2>
-        <div className="space-y-4 sm:space-y-5">
-          {selectedPositions.map((pos, idx) => (
-            <div key={idx} className="bg-[#f8f9fa] rounded-xl p-4 sm:p-5 relative group">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
-                <h3 className="font-medium text-[#0f4c5c]">{pos.title}</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 rounded-t-2xl">
+          <h2 className="text-2xl font-bold text-[#0f4c5c]">Review Your Vote</h2>
+          <p className="text-gray-600 mt-1">Please review your selections before submitting</p>
+        </div>
+        
+        <div className="p-6 space-y-6">
+          {selectedPositions.map((position) => (
+            <div key={position.id} className="border-b border-gray-200 pb-4 last:border-0">
+              <div className="flex justify-between items-start mb-3">
+                <h3 className="text-lg font-semibold text-[#0f4c5c]">{position.title}</h3>
                 <button
-                  onClick={onEdit}
-                  className="text-xs sm:text-sm bg-white px-3 py-1 rounded-full border border-[#0f4c5c] text-[#0f4c5c] hover:bg-[#0f4c5c] hover:text-white transition-all duration-200"
+                  onClick={() => onEdit(position.id)}
+                  className="text-sm text-[#f4a261] hover:text-[#e76f51] font-medium transition-colors"
                 >
                   Edit
                 </button>
               </div>
               
-              {pos.candidate ? (
-                <div className="flex items-center gap-3 sm:gap-4">
-                  <img src={pos.candidate.image} alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-[#f4a261]" />
+              {position.candidate ? (
+                // Single candidate selection
+                <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                  {getPhotoUrl(position.candidate) && (
+                    <img
+                      src={getPhotoUrl(position.candidate)}
+                      alt={getCandidateName(position.candidate)}
+                      className="w-12 h-12 rounded-full object-cover"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'https://via.placeholder.com/48?text=No+Image';
+                      }}
+                    />
+                  )}
                   <div>
-                    <p className="font-semibold text-sm sm:text-base text-[#2d3e50]">{pos.candidate.name}</p>
-                    <p className="text-xs sm:text-sm text-[#5a6b7a]">{pos.candidate.party}</p>
+                    <p className="font-medium text-gray-900">
+                      {getCandidateName(position.candidate)}
+                    </p>
+                    {getPartyName(position.candidate) && (
+                      <p className="text-sm text-gray-600">
+                        {getPartyName(position.candidate)}
+                      </p>
+                    )}
                   </div>
                 </div>
-              ) : pos.candidates && pos.candidates.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                  {pos.candidates.map(c => (
-                    <div key={c.id} className="flex items-center gap-2 sm:gap-3 bg-white rounded-lg p-2">
-                      <img src={c.image} alt="" className="w-8 h-8 rounded-full border border-[#f4a261]" />
-                      <div className="truncate">
-                        <p className="text-xs sm:text-sm font-medium text-[#2d3e50] truncate">{c.name}</p>
-                        <p className="text-xs text-[#5a6b7a]">{c.party}</p>
+              ) : position.candidates && position.candidates.length > 0 ? (
+                // Multiple candidates selection
+                <div className="space-y-2">
+                  {position.candidates.map((candidate, idx) => (
+                    <div key={idx} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                      {getPhotoUrl(candidate) && (
+                        <img
+                          src={getPhotoUrl(candidate)}
+                          alt={getCandidateName(candidate)}
+                          className="w-12 h-12 rounded-full object-cover"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = 'https://via.placeholder.com/48?text=No+Image';
+                          }}
+                        />
+                      )}
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {getCandidateName(candidate)}
+                        </p>
+                        {getPartyName(candidate) && (
+                          <p className="text-sm text-gray-600">
+                            {getPartyName(candidate)}
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-[#5a6b7a] italic text-sm sm:text-base">None selected</p>
+                <p className="text-gray-500 italic">None selected</p>
               )}
             </div>
           ))}
         </div>
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6 sm:mt-8">
+        
+        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6 rounded-b-2xl flex justify-end gap-3">
           <button
             onClick={onCancel}
-            className="flex-1 py-2.5 sm:py-3 px-4 bg-white text-[#2d3e50] rounded-xl font-medium border border-gray-200 hover:bg-gray-50 transition shadow-sm text-sm sm:text-base"
+            className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 py-2.5 sm:py-3 px-4 bg-[#0f4c5c] text-white rounded-xl font-medium hover:bg-[#1a6b7f] transition shadow-md text-sm sm:text-base"
+            className="px-6 py-2 bg-[#2ecc71] text-white rounded-lg hover:bg-[#27ae60] transition-colors"
           >
-            Confirm Votes
+            Confirm Vote
           </button>
         </div>
       </div>

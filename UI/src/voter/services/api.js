@@ -39,6 +39,14 @@ export const getElectionResults = async (electionId) => {
   }
 };
 
+export const getImageUrl = (photoUrl) => {
+  if (!photoUrl) return null;
+  if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
+    return photoUrl;
+  }
+  return `http://localhost:3000${photoUrl}`;
+};
+
 // ========== TOKEN MANAGEMENT ==========
 export const setAuthToken = (token) => localStorage.setItem('token', token);
 export const getAuthToken = () => localStorage.getItem('token');

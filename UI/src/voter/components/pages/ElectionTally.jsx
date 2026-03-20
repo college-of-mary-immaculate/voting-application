@@ -10,12 +10,40 @@ export default function ElectionTally() {
   const [election, setElection] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isExpired, setIsExpired] = useState(false);
+  const [serverTime, setServerTime] = useState(new Date().toISOString());
+
+  // Generate a color based on ballot number for consistent visual identification
+  const getBallotColor = (ballotNumber) => {
+    const colors = [
+      'bg-red-100 text-red-800',
+      'bg-blue-100 text-blue-800',
+      'bg-green-100 text-green-800',
+      'bg-yellow-100 text-yellow-800',
+      'bg-purple-100 text-purple-800',
+      'bg-pink-100 text-pink-800',
+      'bg-indigo-100 text-indigo-800',
+      'bg-orange-100 text-orange-800',
+      'bg-teal-100 text-teal-800',
+      'bg-cyan-100 text-cyan-800',
+    ];
+    return colors[(ballotNumber - 1) % colors.length];
+  };
 
   const fetchResults = async () => {
     try {
       const res = await getElectionResults(electionId);
-      setResults(res.data.results || []);
-      setElection(res.data.election);
+      console.log('Results API Response:', res);
+      
+      // Handle the response structure
+      if (res.data && res.data.status === 'success') {
+        setResults(res.data.results || []);
+        setElection({ election_id: res.data.election_id });
+        
+        // Fetch election details separately if needed
+        // You might want to fetch election details to get start_at and end_at
+        fetchElectionDetails();
+      }
     } catch (err) {
       console.error('Failed to fetch results:', err);
       setError('Failed to load results');
@@ -24,10 +52,43 @@ export default function ElectionTally() {
     }
   };
 
+  const fetchElectionDetails = async () => {
+    try {
+      // Assuming you have an API endpoint to get election details
+      const response = await API.get(`/elections/${electionId}`);
+      if (response.data && response.data.status === 'success') {
+        setElection(prev => ({
+          ...prev,
+          election_name: response.data.data.election_name,
+          start_at: response.data.data.start_at,
+          end_at: response.data.data.end_at
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to fetch election details:', err);
+    }
+  };
+
+  // Check if election has ended
+  useEffect(() => {
+    if (!election?.end_at) return;
+    const checkExpiry = () => {
+      const now = new Date();
+      const endDate = new Date(election.end_at);
+      setIsExpired(now >= endDate);
+    };
+    checkExpiry();
+    const interval = setInterval(checkExpiry, 1000);
+    return () => clearInterval(interval);
+  }, [election?.end_at]);
+
   useEffect(() => {
     fetchResults();
     socket.emit('joinElection', parseInt(electionId));
-    socket.on('voteUpdate', fetchResults);
+    socket.on('voteUpdate', () => {
+      console.log('Vote update received, refreshing results...');
+      fetchResults();
+    });
     return () => {
       socket.off('voteUpdate');
     };
@@ -69,29 +130,56 @@ export default function ElectionTally() {
   }
 
   const totalVotes = results.reduce((total, position) => {
-    return total + position.candidates.reduce((posTotal, c) => posTotal + (c.votes || 0), 0);
+    return total + (position.candidates || []).reduce((posTotal, c) => posTotal + (c.votes || 0), 0);
   }, 0);
 
   return (
     <div className="min-h-screen bg-slate-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8 flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              {election?.election_name || `Election #${electionId}`}
-            </h1>
-            <p className="text-gray-600">
-              Final tally of votes • Total votes cast: {totalVotes}
-            </p>
+        {/* Header with Timer */}
+        <div className="mb-8">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                {election?.election_name || `Election #${electionId}`}
+              </h1>
+              <p className="text-gray-600">
+                Final tally of votes • Total votes cast: {totalVotes}
+              </p>
+              {election?.start_at && election?.end_at && (
+                <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-500">
+                  <span>📅 Started: {new Date(election.start_at).toLocaleString()}</span>
+                  <span>⌛ Ends: {new Date(election.end_at).toLocaleString()}</span>
+                </div>
+              )}
+            </div>
+            
+            {/* Timer Display */}
+            {election?.end_at && (
+              <div className="bg-white rounded-lg shadow-md p-4 min-w-[200px]">
+                <div className="text-center">
+                  <div className="text-sm text-gray-600 mb-1">
+                    {isExpired ? 'Election Ended' : 'Time Remaining'}
+                  </div>
+                  <CountdownTimer 
+                    endTime={election.end_at} 
+                    serverTime={serverTime}
+                  />
+                  {isExpired && (
+                    <div className="mt-2 text-xs text-red-500 font-medium">
+                      Voting period has ended
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-          {election?.end_at && (
-            <CountdownTimer endTime={election.end_at} serverTime={new Date().toISOString()} />
-          )}
         </div>
 
         <div className="space-y-6">
           {results.map((position) => {
-            const votesArray = position.candidates.map(c => c.votes || 0);
+            const candidates = position.candidates || [];
+            const votesArray = candidates.map(c => c.votes || 0);
             const maxVotes = Math.max(...votesArray, 0);
             const isMultiWinner = votesArray.filter(v => v === maxVotes).length > 1;
 
@@ -103,17 +191,18 @@ export default function ElectionTally() {
                       {position.position_name}
                     </h2>
                     <span className="text-sm text-indigo-700 bg-indigo-100 px-3 py-1 rounded-full">
-                      {position.candidates.length} candidate{position.candidates.length !== 1 ? 's' : ''}
+                      {candidates.length} candidate{candidates.length !== 1 ? 's' : ''}
                     </span>
                   </div>
                 </div>
 
                 <div className="p-6">
                   <div className="space-y-4">
-                    {position.candidates.map((candidate) => {
+                    {candidates.map((candidate) => {
                       const votes = candidate.votes || 0;
                       const isWinner = votes === maxVotes && maxVotes > 0;
                       const votePercentage = maxVotes > 0 ? ((votes / maxVotes) * 100).toFixed(1) : 0;
+                      const ballotColor = getBallotColor(candidate.ballot_number);
 
                       return (
                         <div
@@ -122,12 +211,14 @@ export default function ElectionTally() {
                             isWinner ? 'bg-green-50 border border-green-200' : 'hover:bg-gray-50 border border-transparent'
                           }`}
                         >
-                          <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mr-4 flex-shrink-0">
-                            <span className="text-indigo-800 font-bold text-lg">
+                          {/* Ballot Number Badge */}
+                          <div className={`w-14 h-14 mr-4 flex-shrink-0 rounded-full ${ballotColor} flex items-center justify-center shadow-sm`}>
+                            <span className="font-bold text-xl">
                               #{candidate.ballot_number}
                             </span>
                           </div>
 
+                          {/* Candidate Info */}
                           <div className="flex-1">
                             <div className="flex items-center flex-wrap gap-2">
                               <span className={`font-semibold text-lg ${isWinner ? 'text-green-800' : 'text-gray-900'}`}>
@@ -139,8 +230,12 @@ export default function ElectionTally() {
                                 </span>
                               )}
                             </div>
+                            <div className="text-sm text-gray-500 mt-1">
+                              Candidate #{candidate.ballot_number}
+                            </div>
                           </div>
 
+                          {/* Votes Count */}
                           <div className="text-right ml-4 min-w-[140px]">
                             <div className="flex items-baseline justify-end">
                               <span className={`font-bold text-2xl ${isWinner ? 'text-green-600' : 'text-gray-700'}`}>

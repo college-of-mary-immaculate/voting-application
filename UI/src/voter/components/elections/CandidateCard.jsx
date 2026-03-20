@@ -1,71 +1,96 @@
-import API from '../../../admin/utils/api'; // Adjust path as needed
+import { useState } from 'react';
+import { getImageUrl } from '../../services/api';
 
 export default function CandidateCard({ candidate, isSelected, onToggle, disabled }) {
+  const [imageError, setImageError] = useState(false);
   
-  // Helper function to safely get candidate data with fallbacks
-  const getCandidateName = () => {
-    const name = candidate.full_name || candidate.name || candidate.FullName || 'Unnamed Candidate';
-    return name;
-  };
-
-  const getPartyName = () => {
-    const party = candidate.party_name || candidate.party || 'Independent';
-    return party;
-  };
-
-  const getPhotoUrl = () => {
-    const photoUrl = candidate.photo_url || candidate.image || candidate.photo;
-    if (!photoUrl) return null;
-    if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
-      return photoUrl;
-    }
-    return `http://localhost:3000${photoUrl}`;
-  };
+  const getCandidateName = () => candidate.full_name || candidate.name || 'Unnamed Candidate';
+  const getPartyName = () => candidate.party_name || candidate.party || 'Independent';
+  
+  const photoUrl = candidate.photo_url || candidate.image;
+  const imageSrc = photoUrl ? getImageUrl(photoUrl) : null;
+  
+  // Fallback avatar using initials
+  const initials = getCandidateName()
+    .split(' ')
+    .map(word => word[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
 
   return (
     <div
-      className={`group relative bg-white/70 backdrop-blur-sm rounded-2xl p-4 sm:p-6 shadow-lg border border-white/50 transition-all duration-300 hover:shadow-xl ${
-        isSelected ? 'ring-2 ring-[#f4a261] ring-offset-2 ring-offset-white' : ''
-      } ${disabled ? 'opacity-50' : ''}`}
+      className={`
+        relative group transition-all duration-300
+        ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:-translate-y-1'}
+      `}
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-[#f4a261]/0 to-[#0f4c5c]/0 group-hover:from-[#f4a261]/10 group-hover:to-[#0f4c5c]/5 rounded-2xl transition-all duration-500"></div>
-      <div className="relative flex flex-col items-center text-center">
-        <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full overflow-hidden mb-3 sm:mb-4 border-4 border-white shadow-md bg-gray-100">
-          {getPhotoUrl() ? (
-            <img 
-              src={getPhotoUrl()} 
-              alt={getCandidateName()} 
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = 'https://via.placeholder.com/150?text=No+Image';
-              }}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#f4a261]/20 to-[#0f4c5c]/20">
-              <span className="text-3xl">👤</span>
-            </div>
-          )}
+      {/* Glass card */}
+      <div
+        className={`
+          relative bg-white/80 backdrop-blur-sm rounded-2xl shadow-md overflow-hidden
+          border transition-all duration-300
+          ${isSelected 
+            ? 'border-indigo-500 shadow-lg shadow-indigo-200/50 ring-2 ring-indigo-500/30' 
+            : 'border-indigo-100 hover:shadow-xl hover:border-indigo-300'
+          }
+        `}
+      >
+        {/* Selected badge (top right corner) */}
+        {isSelected && (
+          <div className="absolute top-3 right-3 z-10 bg-indigo-600 text-white rounded-full p-1 shadow-md">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+        )}
+
+        {/* Photo area */}
+        <div className="relative pt-4 pb-2 px-4 flex justify-center">
+          <div className="relative">
+            {imageSrc && !imageError ? (
+              <img
+                src={imageSrc}
+                alt={getCandidateName()}
+                className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full object-cover border-4 border-white shadow-md transition-transform duration-300 group-hover:scale-105"
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center border-4 border-white shadow-md">
+                <span className="text-2xl font-bold text-indigo-600">{initials}</span>
+              </div>
+            )}
+          </div>
         </div>
-        <h3 className="text-base sm:text-lg md:text-xl font-semibold text-[#2d3e50] line-clamp-2">
-          {getCandidateName()}
-        </h3>
-        <p className="text-xs sm:text-sm text-[#5a6b7a] mb-4 sm:mb-5 line-clamp-1">
-          {getPartyName()}
-        </p>
-        <button
-          onClick={onToggle}
-          disabled={disabled}
-          className={`w-full py-2 px-3 sm:py-2.5 sm:px-4 rounded-xl font-medium text-sm sm:text-base transition-all duration-200 ${
-            isSelected
-              ? 'bg-[#2ecc71] text-white shadow-inner'
-              : disabled
-              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              : 'bg-white text-[#0f4c5c] border border-[#0f4c5c] hover:bg-[#0f4c5c] hover:text-white'
-          }`}
-        >
-          {isSelected ? 'Selected' : 'Select'}
-        </button>
+
+        {/* Candidate info */}
+        <div className="px-4 pb-4 text-center">
+          <h3 className="font-semibold text-gray-800 text-base sm:text-lg line-clamp-2">
+            {getCandidateName()}
+          </h3>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1 line-clamp-1">
+            {getPartyName()}
+          </p>
+        </div>
+
+        {/* Action button */}
+        <div className="px-4 pb-4">
+          <button
+            onClick={onToggle}
+            disabled={disabled}
+            className={`
+              w-full py-2 rounded-xl font-medium text-sm sm:text-base transition-all duration-200
+              ${isSelected
+                ? 'bg-indigo-600 text-white shadow-inner hover:bg-indigo-700'
+                : disabled
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-white text-indigo-600 border border-indigo-300 hover:bg-indigo-50 hover:border-indigo-500'
+              }
+            `}
+          >
+            {isSelected ? 'Selected' : 'Select'}
+          </button>
+        </div>
       </div>
     </div>
   );
